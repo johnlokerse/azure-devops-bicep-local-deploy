@@ -10,12 +10,6 @@ public enum ProjectVisibility
     Public
 }
 
-public class Configuration
-{
-    [TypeProperty("Personal Access Token (PAT) for Azure DevOps with appropriate scopes. If omitted, environment variable AZDO_PAT is used.")]
-    public string? AccessToken { get; set; }
-}
-
 public class AzureDevOpsProjectIdentifiers
 {
     [TypeProperty("The Azure DevOps project name", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
@@ -50,36 +44,4 @@ public class AzureDevOpsProject : AzureDevOpsProjectIdentifiers
 
     [TypeProperty("Project web URL")]
     public string? Url { get; set; }
-}
-
-public class AzureDevOpsRepositoryIdentifiers
-{
-    [TypeProperty("Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
-    public required string Organization { get; set; }
-
-    [TypeProperty("Project name that will contain the repository", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
-    public required string Project { get; set; }
-
-    [TypeProperty("The Azure DevOps repository name", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
-    public required string Name { get; set; }
-}
-
-[ResourceType("AzureDevOpsRepository")]
-public class AzureDevOpsRepository : AzureDevOpsRepositoryIdentifiers
-{
-    [TypeProperty("Default branch name to set after creation (e.g. 'refs/heads/main'). If omitted, Azure DevOps sets one after first push.")]
-    public string? DefaultBranch { get; set; }
-
-    // Outputs
-    [TypeProperty("Repository id (GUID)")]
-    public string? RepositoryId { get; set; }
-
-    [TypeProperty("Repository web URL")]
-    public string? WebUrl { get; set; }
-
-    [TypeProperty("HTTPS clone URL")]
-    public string? RemoteUrl { get; set; }
-
-    [TypeProperty("SSH clone URL")]
-    public string? SshUrl { get; set; }
 }

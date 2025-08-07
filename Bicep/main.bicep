@@ -29,7 +29,7 @@ param sourceControl string = 'Git'
 
 @secure()
 @description('Azure DevOps PAT (leave empty to use AZDO_PAT environment variable).')
-param pat string = ''
+param pat string?
 
 @description('Repository name')
 param repositoryName string

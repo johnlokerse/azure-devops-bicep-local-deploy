@@ -3,6 +3,7 @@
 This project demonstrates a custom Bicep Local Extension (C# / .NET 9) that can create (and idempotently ensure) an Azure DevOps configuration via the Azure DevOps REST API.
 
 ## Status
+
 Experimental / sample only. Limited functionality:
 
 - Create Azure DevOps Project
@@ -25,9 +26,9 @@ export AZDO_PAT="<your pat>"
 Publish self-contained binaries for the three supported runtimes (adjust for your OS/arch as needed):
 
 ```bash
-dotnet publish --configuration Release -r osx-arm64 .
-dotnet publish --configuration Release -r linux-x64 .
-dotnet publish --configuration Release -r win-x64 .
+dotnet publish --configuration Release -r osx-arm64 azure-devops-bicep-local.sln
+dotnet publish --configuration Release -r linux-x64 azure-devops-bicep-local.sln
+dotnet publish --configuration Release -r win-x64 azure-devops-bicep-local.sln
 
 bicep publish-extension --bin-osx-arm64 ./bin/Release/osx-arm64/publish/azure-devops-extension --bin-linux-x64 ./bin/Release/linux-x64/publish/azure-devops-extension --bin-win-x64 ./bin/Release/win-x64/publish/azure-devops-extension.exe --target ./bin/azure-devops-extension --force
 ```
@@ -44,7 +45,7 @@ bicep local-deploy main.bicepparam
 
 Expected output (example):
 
-```
+```text
 Output projectId: 00000000-0000-0000-0000-000000000000
 Output projectState: wellFormed
 Output projectUrl: https://dev.azure.com/myorganization/_apis/projects/00000000-0000-0000-0000-000000000000
@@ -107,6 +108,7 @@ output repositoryWebUrl string = repo.webUrl
 ```
 
 Deploy:
+
 ```bash
 bicep local-deploy Bicep/repository.bicepparam
 ```

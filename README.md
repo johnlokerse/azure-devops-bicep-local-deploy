@@ -3,7 +3,9 @@
 This project demonstrates a custom Bicep Local Extension (C# / .NET 9) that can create (and idempotently ensure) an Azure DevOps Project via the Azure DevOps REST API.
 
 ## Status
-Experimental / sample only. Limited functionality: create project if missing, update description if changed. No delete support, no advanced updates.
+Experimental / sample only. Limited functionality:
+- Create Azure DevOps Project
+- Create Azure DevOps Repos
 
 ## Prerequisites
 * .NET 9 SDK
@@ -50,10 +52,18 @@ extension azuredevopsextension
 param organization string
 param projectName string
 param pat string
+param repositoryName string
 
 resource project 'AzureDevOpsProject' = {
   name: projectName
   organization: organization
+  pat: pat
+}
+
+resource repository 'AzureDevOpsRepository' = {
+  name: repositoryName
+  organization: organization
+  project: project.name
   pat: pat
 }
 
@@ -106,13 +116,5 @@ Outputs will include repository id and URLs. Idempotent: if repo exists, outputs
 ## Security Notes
 Prefer environment variable over passing PAT as a property. Secrets in parameters can leak into logs. Never commit real PATs.
 
-## Next Enhancements (Ideas)
-* Add support for creating default team & repo settings.
-* Add deletion (requires design choice – currently "Create only").
-* Expand output (default repo id, web URLs).
-* Parameter validation & richer error messages.
-* Unit tests with mocked HTTP handler.
-
 ## Disclaimer
 Sample only – not an official Microsoft supported extension. Use at your own risk.
-# azure-devops-bicep-local

@@ -1,9 +1,9 @@
 {
-	"experimentalFeaturesEnabled": {
-		"localDeploy": true
-	},
-	"extensions": {
-		"azuredevopsextension": "../bin/azure-devops-extension"
-	},
-	"implicitExtensions": []
+  "experimentalFeaturesEnabled": {
+    "localDeploy": true
+  },
+  "extensions": {
+    "azuredevops": "../bin/azure-devops-extension"
+  },
+  "implicitExtensions": []
 }

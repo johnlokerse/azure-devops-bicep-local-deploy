@@ -10,18 +10,24 @@ public enum ProjectVisibility
     Public
 }
 
+public class Configuration
+{
+    [TypeProperty("Personal Access Token (PAT) for Azure DevOps with appropriate scopes. If omitted, environment variable AZDO_PAT is used.")]
+    public string? AccessToken { get; set; }
+}
+
 public class AzureDevOpsProjectIdentifiers
 {
     [TypeProperty("The Azure DevOps project name", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
     public required string Name { get; set; }
+
+    [TypeProperty("Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
+    public required string Organization { get; set; }
 }
 
 [ResourceType("AzureDevOpsProject")] // exposed to Bicep as resource type name
 public class AzureDevOpsProject : AzureDevOpsProjectIdentifiers
 {
-    [TypeProperty("Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL", ObjectTypePropertyFlags.Required)]
-    public required string Organization { get; set; }
-
     [TypeProperty("Project description")]
     public string? Description { get; set; }
 
@@ -34,9 +40,6 @@ public class AzureDevOpsProject : AzureDevOpsProjectIdentifiers
 
     [TypeProperty("Source control type (Git or Tfvc)")]
     public string? SourceControlType { get; set; } = "Git";
-
-    [TypeProperty("Personal Access Token (PAT) for Azure DevOps with appropriate scopes. If omitted, environment variable AZDO_PAT is used.")]
-    public string? Pat { get; set; }
 
     // Outputs
     [TypeProperty("Project id (GUID)")]
@@ -51,6 +54,12 @@ public class AzureDevOpsProject : AzureDevOpsProjectIdentifiers
 
 public class AzureDevOpsRepositoryIdentifiers
 {
+    [TypeProperty("Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
+    public required string Organization { get; set; }
+
+    [TypeProperty("Project name that will contain the repository", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
+    public required string Project { get; set; }
+
     [TypeProperty("The Azure DevOps repository name", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
     public required string Name { get; set; }
 }
@@ -58,15 +67,6 @@ public class AzureDevOpsRepositoryIdentifiers
 [ResourceType("AzureDevOpsRepository")]
 public class AzureDevOpsRepository : AzureDevOpsRepositoryIdentifiers
 {
-    [TypeProperty("Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL", ObjectTypePropertyFlags.Required)]
-    public required string Organization { get; set; }
-
-    [TypeProperty("Project name that will contain the repository", ObjectTypePropertyFlags.Required)]
-    public required string Project { get; set; }
-
-    [TypeProperty("Personal Access Token (PAT) for Azure DevOps with appropriate scopes. If omitted, environment variable AZDO_PAT is used.")]
-    public string? Pat { get; set; }
-
     [TypeProperty("Default branch name to set after creation (e.g. 'refs/heads/main'). If omitted, Azure DevOps sets one after first push.")]
     public string? DefaultBranch { get; set; }
 

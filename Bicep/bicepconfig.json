@@ -3,7 +3,7 @@
 		"localDeploy": true
 	},
 	"extensions": {
-		"azuredevopsextension": "../bin/Release/azure-devops-extension"
+		"azuredevopsextension": "../bin/azure-devops-extension"
 	},
 	"implicitExtensions": []
 }

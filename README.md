@@ -60,6 +60,38 @@ resource project 'AzureDevOpsProject' = {
 output id string = project.projectId
 ```
 
+### Separate Repository Deployment
+Create a repository in an existing project using a separate deployment:
+
+`Bicep/repository.bicep`:
+```bicep
+targetScope = 'local'
+extension azuredevopsextension
+
+param organization string
+param projectName string
+param repositoryName string
+@secure()
+param pat string = ''
+
+resource repo 'AzureDevOpsRepository' = {
+  name: repositoryName
+  organization: organization
+  project: projectName
+  pat: empty(pat) ? null : pat
+}
+
+output repositoryId string = repo.repositoryId
+output repositoryWebUrl string = repo.webUrl
+```
+
+Deploy:
+```bash
+bicep local-deploy Bicep/repository.bicepparam
+```
+
+Outputs will include repository id and URLs. Idempotent: if repo exists, outputs are populated without error.
+
 ## First Implementation Steps
 1. Read the Bicep local extension quickstart (done / mirrored here).
 2. Scaffold the .NET project (`DevOpsExtension.csproj`, `Program.cs`).

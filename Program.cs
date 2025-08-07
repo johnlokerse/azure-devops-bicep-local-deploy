@@ -12,7 +12,8 @@ builder.Services
         version: "0.0.1",
         isSingleton: true,
         typeAssembly: typeof(Program).Assembly)
-    .WithResourceHandler<AzureDevOpsProjectHandler>();
+    .WithResourceHandler<AzureDevOpsProjectHandler>()
+    .WithResourceHandler<AzureDevOpsRepositoryHandler>();
 
 var app = builder.Build();
 

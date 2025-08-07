@@ -1,6 +1,6 @@
 # Azure DevOps Bicep Local Extension (Experimental)
 
-This project demonstrates a custom Bicep Local Extension (C# / .NET 9) that can create (and idempotently ensure) an Azure DevOps Project via the Azure DevOps REST API.
+This project demonstrates a custom Bicep Local Extension (C# / .NET 9) that can create (and idempotently ensure) an Azure DevOps configuration via the Azure DevOps REST API.
 
 ## Status
 Experimental / sample only. Limited functionality:

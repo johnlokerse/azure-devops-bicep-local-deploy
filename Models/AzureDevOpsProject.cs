@@ -14,14 +14,14 @@ public class AzureDevOpsProjectIdentifiers
 {
     [TypeProperty("The Azure DevOps project name", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
     public required string Name { get; set; }
+
+    [TypeProperty("Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
+    public required string Organization { get; set; }
 }
 
 [ResourceType("AzureDevOpsProject")] // exposed to Bicep as resource type name
 public class AzureDevOpsProject : AzureDevOpsProjectIdentifiers
 {
-    [TypeProperty("Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL", ObjectTypePropertyFlags.Required)]
-    public required string Organization { get; set; }
-
     [TypeProperty("Project description")]
     public string? Description { get; set; }
 
@@ -34,9 +34,6 @@ public class AzureDevOpsProject : AzureDevOpsProjectIdentifiers
 
     [TypeProperty("Source control type (Git or Tfvc)")]
     public string? SourceControlType { get; set; } = "Git";
-
-    [TypeProperty("Personal Access Token (PAT) for Azure DevOps with appropriate scopes. If omitted, environment variable AZDO_PAT is used.")]
-    public string? Pat { get; set; }
 
     // Outputs
     [TypeProperty("Project id (GUID)")]

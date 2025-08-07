@@ -1,5 +1,7 @@
 targetScope = 'local'
-extension azuredevopsextension
+extension azuredevops with {
+  accessToken: pat
+}
 
 @description('Azure DevOps organization name (short org slug, not full URL).')
 param organization string
@@ -39,14 +41,12 @@ resource project 'AzureDevOpsProject' = {
   visibility: visibility
   processName: processName
   sourceControlType: sourceControl
-  pat: pat
 }
 
 resource repository 'AzureDevOpsRepository' = {
   name: repositoryName
   organization: organization
   project: project.name
-  pat: pat
 }
 
 output projectId string = project.projectId

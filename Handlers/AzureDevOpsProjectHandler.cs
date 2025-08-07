@@ -7,7 +7,7 @@ using DevOpsExtension.Models;
 
 namespace DevOpsExtension.Handlers;
 
-public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject, AzureDevOpsProjectIdentifiers>
+public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject, AzureDevOpsProjectIdentifiers, Configuration>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -16,7 +16,7 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
 
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
     {
-        var existing = await GetProjectAsync(request.Properties, cancellationToken);
+        var existing = await GetProjectAsync(request.Config, request.Properties, cancellationToken);
         if (existing is not null)
         {
             request.Properties.ProjectId = existing.id;
@@ -29,18 +29,18 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
     protected override async Task<ResourceResponse> CreateOrUpdate(ResourceRequest request, CancellationToken cancellationToken)
     {
         var props = request.Properties;
-        var existing = await GetProjectAsync(props, cancellationToken);
+        var existing = await GetProjectAsync(request.Config, props, cancellationToken);
         if (existing is null)
         {
-            await CreateProjectAsync(props, cancellationToken);
-            existing = await GetProjectAsync(props, cancellationToken) ?? throw new InvalidOperationException("Project creation did not return project.");
+            await CreateProjectAsync(request.Config, props, cancellationToken);
+            existing = await GetProjectAsync(request.Config, props, cancellationToken) ?? throw new InvalidOperationException("Project creation did not return project.");
         }
         else
         {
             if (!string.IsNullOrWhiteSpace(props.Description) && props.Description != existing.description)
             {
-                await UpdateProjectDescriptionAsync(existing.id, props, cancellationToken);
-                existing = await GetProjectAsync(props, cancellationToken) ?? existing;
+                await UpdateProjectDescriptionAsync(request.Config, existing.id, props, cancellationToken);
+                existing = await GetProjectAsync(request.Config, props, cancellationToken) ?? existing;
             }
         }
 
@@ -52,15 +52,16 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
 
     protected override AzureDevOpsProjectIdentifiers GetIdentifiers(AzureDevOpsProject properties) => new()
     {
+        Organization = properties.Organization,
         Name = properties.Name,
     };
 
-    private async Task<dynamic?> GetProjectAsync(AzureDevOpsProject props, CancellationToken ct)
+    private async Task<dynamic?> GetProjectAsync(Configuration configuration, AzureDevOpsProject props, CancellationToken ct)
     {
         try
         {
             var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-            using var client = CreateClient(props);
+            using var client = CreateClient(configuration);
             var resp = await client.GetAsync($"{baseUrl}/{org}/_apis/projects/{Uri.EscapeDataString(props.Name)}?api-version=7.1-preview.4", ct);
             if (!resp.IsSuccessStatusCode)
             {
@@ -82,10 +83,10 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
         }
     }
 
-    private async Task CreateProjectAsync(AzureDevOpsProject props, CancellationToken ct)
+    private async Task CreateProjectAsync(Configuration configuration, AzureDevOpsProject props, CancellationToken ct)
     {
         var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-        using var client = CreateClient(props);
+        using var client = CreateClient(configuration);
         var processId = await ResolveProcessTemplateIdAsync(client, org, baseUrl, props.ProcessName ?? "Agile", ct);
 
         var body = new
@@ -108,10 +109,10 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
         }
     }
 
-    private async Task UpdateProjectDescriptionAsync(string projectId, AzureDevOpsProject props, CancellationToken ct)
+    private async Task UpdateProjectDescriptionAsync(Configuration configuration, string projectId, AzureDevOpsProject props, CancellationToken ct)
     {
         var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-        using var client = CreateClient(props);
+        using var client = CreateClient(configuration);
         var body = new { description = props.Description };
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
         var resp = await client.PatchAsync($"{baseUrl}/{org}/_apis/projects/{projectId}?api-version=7.1-preview.4", content, ct);
@@ -155,9 +156,9 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
         return (organization, "https://dev.azure.com");
     }
 
-    private static HttpClient CreateClient(AzureDevOpsProject props)
+    private static HttpClient CreateClient(Configuration configuration)
     {
-        var pat = props.Pat ?? Environment.GetEnvironmentVariable("AZDO_PAT");
+        var pat = configuration.AccessToken ?? Environment.GetEnvironmentVariable("AZDO_PAT");
         if (string.IsNullOrWhiteSpace(pat))
         {
             throw new InvalidOperationException("A PAT must be supplied via property 'pat' or AZDO_PAT environment variable.");

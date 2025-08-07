@@ -57,7 +57,7 @@ Result: Succeeded
 
 ```bicep
 targetScope = 'local'
-extension azuredevopsextension
+extension azuredevops
 
 param organization string
 param projectName string
@@ -88,7 +88,7 @@ Create a repository in an existing project using a separate deployment:
 
 ```bicep
 targetScope = 'local'
-extension azuredevopsextension
+extension azuredevops
 
 param organization string
 param projectName string

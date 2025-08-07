@@ -7,7 +7,7 @@ using DevOpsExtension.Models;
 
 namespace DevOpsExtension.Handlers;
 
-public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepository, AzureDevOpsRepositoryIdentifiers>
+public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepository, AzureDevOpsRepositoryIdentifiers, Configuration>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -16,7 +16,7 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
 
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
     {
-        var existing = await GetRepositoryAsync(request.Properties, cancellationToken);
+        var existing = await GetRepositoryAsync(request.Config, request.Properties, cancellationToken);
         if (existing is not null)
         {
             PopulateOutputs(request.Properties, existing);
@@ -27,11 +27,11 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
     protected override async Task<ResourceResponse> CreateOrUpdate(ResourceRequest request, CancellationToken cancellationToken)
     {
         var props = request.Properties;
-        var existing = await GetRepositoryAsync(props, cancellationToken);
+        var existing = await GetRepositoryAsync(request.Config, props, cancellationToken);
         if (existing is null)
         {
-            await CreateRepositoryAsync(props, cancellationToken);
-            existing = await GetRepositoryAsync(props, cancellationToken) ?? throw new InvalidOperationException("Repository creation did not return repository.");
+            await CreateRepositoryAsync(request.Config, props, cancellationToken);
+            existing = await GetRepositoryAsync(request.Config, props, cancellationToken) ?? throw new InvalidOperationException("Repository creation did not return repository.");
         }
 
         PopulateOutputs(props, existing);
@@ -40,6 +40,8 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
 
     protected override AzureDevOpsRepositoryIdentifiers GetIdentifiers(AzureDevOpsRepository properties) => new()
     {
+        Organization = properties.Organization,
+        Project = properties.Project,
         Name = properties.Name,
     };
 
@@ -51,12 +53,12 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
         props.SshUrl = repo.sshUrl;
     }
 
-    private async Task<dynamic?> GetRepositoryAsync(AzureDevOpsRepository props, CancellationToken ct)
+    private async Task<dynamic?> GetRepositoryAsync(Configuration configuration, AzureDevOpsRepository props, CancellationToken ct)
     {
         try
         {
             var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-            using var client = CreateClient(props.Pat);
+            using var client = CreateClient(configuration);
             var resp = await client.GetAsync($"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/git/repositories/{Uri.EscapeDataString(props.Name)}?api-version=7.1-preview.1", ct);
             if (!resp.IsSuccessStatusCode)
             {
@@ -79,10 +81,10 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
         }
     }
 
-    private async Task CreateRepositoryAsync(AzureDevOpsRepository props, CancellationToken ct)
+    private async Task CreateRepositoryAsync(Configuration configuration, AzureDevOpsRepository props, CancellationToken ct)
     {
         var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-        using var client = CreateClient(props.Pat);
+        using var client = CreateClient(configuration);
 
         // Resolve project id
         var projectResp = await client.GetAsync($"{baseUrl}/{org}/_apis/projects/{Uri.EscapeDataString(props.Project)}?api-version=7.1-preview.4", ct);
@@ -123,9 +125,9 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
         return (organization, "https://dev.azure.com");
     }
 
-    private static HttpClient CreateClient(string? patProperty)
+    private static HttpClient CreateClient(Configuration configuration)
     {
-        var pat = patProperty ?? Environment.GetEnvironmentVariable("AZDO_PAT");
+        var pat = configuration.AccessToken ?? Environment.GetEnvironmentVariable("AZDO_PAT");
         if (string.IsNullOrWhiteSpace(pat))
         {
             throw new InvalidOperationException("A PAT must be supplied via property 'pat' or AZDO_PAT environment variable.");

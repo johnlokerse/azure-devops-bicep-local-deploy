@@ -14,7 +14,7 @@ param parResourceGroupName string
 param parSku string
 
 @description('Location for the Azure Container Registry and Resource Group')
-param parLocation string = resourceGroup().location
+param parLocation string = deployment().location
 
 resource resResourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: parResourceGroupName

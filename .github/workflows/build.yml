@@ -47,6 +47,7 @@ jobs:
           az config set bicep.use_binary_from_path=false
           az bicep install
 
-      - name: Publish Locally
+      - name: Publish Extension
+        shell: pwsh
         run: |
-          bash ./Infra/Scripts/publish.sh azure-devops-extension
+          ./Infra/Scripts/Publish-Extension.ps1 -Target azure-devops-extension

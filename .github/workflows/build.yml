@@ -51,4 +51,4 @@ jobs:
         shell: pwsh
         run: |
           ./Infra/Scripts/Publish-Extension.ps1 -Target azure-devops-extension
-          Get-ChildItem -Force | Select-Object Mode, LastWriteTime, Length, Name
+          Get-ChildItem ./src/bin/Release/linux-x64/publish/ -Force | Select-Object Mode, LastWriteTime, Length, Name

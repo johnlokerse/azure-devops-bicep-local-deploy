@@ -39,3 +39,41 @@ jobs:
           location: westeurope
           template-file: ./Infra/main.bicep
           parameters-file: ./Infra/main.bicepparam
+
+  publish-extension:
+    needs: deploy-acr
+    name: Publish Azure DevOps Bicep extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
+          submodules: true
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Bicep
+        run: |
+          az config set bicep.use_binary_from_path=false
+          az bicep install
+
+      - name: Run nbgv
+        id: nbgv
+        uses: dotnet/nbgv@v0.4.2
+
+      - name: Publish Extension
+        shell: pwsh
+        run: |
+          [string] $target = "br:azuredevopsbicep.azurecr.io/extensions/azuredevops:${{ steps.nbgv.outputs.SimpleVersion }}"
+          ./Infra/Scripts/Publish-Extension.ps1 -Target $target
+
+          Write-Host "Published extension \`${$target}\`." >> $GITHUB_STEP_SUMMARY

@@ -1,5 +1,5 @@
 using 'main.bicep'
 
-param parName = 'azuredevopsbicepextension'
+param parName = 'azuredevopsbicep'
 param parSku = 'Standard'
-param parResourceGroupName = 'rg-azuredevopsbicepextension-we'
+param parResourceGroupName = 'rg-azuredevopsbicep-we'

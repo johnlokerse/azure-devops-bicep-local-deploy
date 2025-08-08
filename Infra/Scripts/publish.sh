@@ -4,7 +4,7 @@ set -e
 usage="Usage: ./publish.sh <target>"
 target=${1:?"Missing target. ${usage}"}
 
-root="$(dirname ${BASH_SOURCE[0]})/.."
+root="$(dirname ${BASH_SOURCE[0]})/../.."
 ext_name="azure-devops-extension"
 
 # build various flavors

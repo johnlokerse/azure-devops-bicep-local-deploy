@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Bicep.Local.Extension.Host.Handlers;
 using DevOpsExtension.Models;
+using System.Net;
 
 namespace DevOpsExtension.Handlers;
 
@@ -107,6 +108,9 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
             var err = await resp.Content.ReadAsStringAsync(ct);
             throw new InvalidOperationException($"Failed to create project: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
         }
+
+        // Wait for long-running project operation to finish and for project to become wellFormed
+        await WaitForProjectReadyAsync(client, org, baseUrl, props.Name, resp, ct);
     }
 
     private async Task UpdateProjectDescriptionAsync(Configuration configuration, string projectId, AzureDevOpsProject props, CancellationToken ct)
@@ -168,6 +172,98 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return client;
+    }
+
+    private static bool IsWellFormed(string? state) =>
+        string.Equals(state, "wellFormed", StringComparison.OrdinalIgnoreCase);
+
+    private static string? TryGetOperationIdFromResponse(HttpResponseMessage response, JsonElement? parsedBody)
+    {
+        try
+        {
+            if (parsedBody.HasValue && parsedBody.Value.ValueKind == JsonValueKind.Object &&
+                parsedBody.Value.TryGetProperty("id", out var idProp))
+            {
+                return idProp.GetString();
+            }
+        }
+        catch { }
+
+        var loc = response.Headers.Location;
+        if (loc != null)
+        {
+            var seg = loc.Segments.LastOrDefault();
+            if (!string.IsNullOrWhiteSpace(seg))
+            {
+                return seg.Trim('/');
+            }
+        }
+        return null;
+    }
+
+    private static async Task WaitForProjectReadyAsync(HttpClient client, string org, string baseUrl, string projectName, HttpResponseMessage createResponse, CancellationToken ct)
+    {
+        JsonElement? bodyJson = null;
+        try
+        {
+            bodyJson = await createResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        }
+        catch { }
+
+        var operationId = TryGetOperationIdFromResponse(createResponse, bodyJson);
+
+        if (!string.IsNullOrWhiteSpace(operationId))
+        {
+            var opUrl = $"{baseUrl}/{org}/_apis/operations/{operationId}?api-version=7.1-preview.1";
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                var opResp = await client.GetAsync(opUrl, ct);
+                if (opResp.IsSuccessStatusCode)
+                {
+                    var opJson = await opResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+                    var status = opJson.TryGetProperty("status", out var s) ? s.GetString() : null;
+                    if (string.Equals(status, "succeeded", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                    if (string.Equals(status, "failed", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(status, "cancelled", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var msg = opJson.TryGetProperty("resultMessage", out var m) ? m.GetString() : "Project creation operation failed.";
+                        throw new InvalidOperationException(msg ?? "Project creation operation failed.");
+                    }
+                }
+                await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            }
+        }
+
+        // Poll the project until state becomes wellFormed (Git dataspace ready)
+        var start = DateTimeOffset.UtcNow;
+        var timeout = TimeSpan.FromMinutes(5);
+        while (DateTimeOffset.UtcNow - start < timeout)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var resp = await client.GetAsync($"{baseUrl}/{org}/_apis/projects/{Uri.EscapeDataString(projectName)}?api-version=7.1-preview.4", ct);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+                    var state = json.TryGetProperty("state", out var st) ? st.GetString() : null;
+                    if (IsWellFormed(state))
+                    {
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                // ignore transient errors
+            }
+            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+        }
+        // Continue; repository creation has its own retries for eventual consistency.
     }
 }
 

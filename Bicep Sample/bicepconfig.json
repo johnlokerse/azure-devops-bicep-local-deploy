@@ -1,0 +1,10 @@
+{
+  "experimentalFeaturesEnabled": {
+    "localDeploy": true
+  },
+  "extensions": {
+    "azuredevops": "br:azuredevopsbicep.azurecr.io/extensions/azuredevops:0.0.0" // ACR
+    // "azuredevops": "../src/bin/azure-devops-extension" // local
+  },
+  "implicitExtensions": []
+}

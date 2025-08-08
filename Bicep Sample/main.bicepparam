@@ -1,6 +1,6 @@
 using 'main.bicep'
 
-param organization = 'john-lokerse'
+param organization = '<org-name>'
 param projectName = 'SampleProjectFromBicep'
 param projectDescription = 'Created via Bicep local extension quickstart'
 param visibility = 'Private'

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Bicep.Local.Extension.Host.Handlers;
 using DevOpsExtension.Models;
+using System.Net;
 
 namespace DevOpsExtension.Handlers;
 
@@ -86,32 +87,54 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
         var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
         using var client = CreateClient(configuration);
 
-        // Resolve project id
+        // Resolve project id (also validates project exists)
         var projectResp = await client.GetAsync($"{baseUrl}/{org}/_apis/projects/{Uri.EscapeDataString(props.Project)}?api-version=7.1-preview.4", ct);
         if (!projectResp.IsSuccessStatusCode)
         {
             var errText = await projectResp.Content.ReadAsStringAsync(ct);
             throw new InvalidOperationException($"Project '{props.Project}' not found or inaccessible: {(int)projectResp.StatusCode} {projectResp.ReasonPhrase} {errText}");
         }
-        var projectJson = await projectResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-        var projectId = projectJson.GetProperty("id").GetString();
-        if (string.IsNullOrWhiteSpace(projectId))
-        {
-            throw new InvalidOperationException("Failed to resolve project id.");
-        }
-
-        var body = new
-        {
-            name = props.Name,
-            project = new { id = projectId }
-        };
+        // Create repo scoped to the project path; retry to bridge project provisioning lag for git dataspace
+        var createUrl = $"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/git/repositories?api-version=7.1-preview.1";
+        var body = new { name = props.Name };
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
-        var resp = await client.PostAsync($"{baseUrl}/{org}/_apis/git/repositories?api-version=7.1-preview.1", content, ct);
-        if (!resp.IsSuccessStatusCode)
+
+        const int maxAttempts = 10;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
+            ct.ThrowIfCancellationRequested();
+
+            var resp = await client.PostAsync(createUrl, content, ct);
+            if (resp.IsSuccessStatusCode)
+            {
+                return;
+            }
+
             var err = await resp.Content.ReadAsStringAsync(ct);
+            if (attempt < maxAttempts && ShouldRetryForProjectProvisioning(resp.StatusCode, err))
+            {
+                var delay = TimeSpan.FromSeconds(Math.Min(30, 1 << Math.Min(5, attempt - 1))); // 1,2,4,8,16,30
+                await Task.Delay(delay, ct);
+                continue;
+            }
+
             throw new InvalidOperationException($"Failed to create repository: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
         }
+    }
+
+    private static bool ShouldRetryForProjectProvisioning(HttpStatusCode status, string error)
+    {
+        if (status == HttpStatusCode.NotFound)
+        {
+            return true;
+        }
+        if (status == HttpStatusCode.InternalServerError &&
+            (error.Contains("DataspaceNotFoundException", StringComparison.OrdinalIgnoreCase) ||
+             error.Contains("Could not find dataspace with category Git", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+        return false;
     }
 
     private static (string org, string baseUrl) GetOrgAndBaseUrl(string organization)

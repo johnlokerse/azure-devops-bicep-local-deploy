@@ -17,9 +17,9 @@ $root = "$PSScriptRoot/../.."
 $extName = "azure-devops-extension"
 
 # build various flavors
-ExecSafe { dotnet publish --configuration Release $root -r osx-arm64 }
-ExecSafe { dotnet publish --configuration Release $root -r linux-x64 }
-ExecSafe { dotnet publish --configuration Release $root -r win-x64 }
+ExecSafe { dotnet publish --configuration Release $root -r osx-arm64 --self-contained true -p:PublishSingleFile=true }
+ExecSafe { dotnet publish --configuration Release $root -r linux-x64 --self-contained true -p:PublishSingleFile=true }
+ExecSafe { dotnet publish --configuration Release $root -r win-x64 --self-contained true -p:PublishSingleFile=true }
 
 # publish to the registry
 ExecSafe { ~/.azure/bin/bicep publish-extension `

@@ -23,10 +23,8 @@ ExecSafe { dotnet publish --configuration Release $root -r win-x64 }
 
 # publish to the registry
 ExecSafe { ~/.azure/bin/bicep publish-extension `
-  --bin-osx-arm64 "src/bin/Release/osx-arm64/publish/$extName" `
-  --bin-linux-x64 "src/bin/Release/linux-x64/publish/$extName" `
-  --bin-win-x64 "src/bin/Release/win-x64/publish/$extName.exe" `
+  --bin-osx-arm64 "$root/src/bin/Release/net9.0/osx-arm64/publish/$extName" `
+  --bin-linux-x64 "$root/src/bin/Release/net9.0/linux-x64/publish/$extName" `
+  --bin-win-x64 "$root/src/bin/Release/net9.0/win-x64/publish/$extName.exe" `
   --target "$Target" `
   --force }
-
-Write-Host "Path: $root"

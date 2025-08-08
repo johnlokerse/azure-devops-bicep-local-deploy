@@ -50,4 +50,4 @@ jobs:
       - name: Publish Extension
         shell: pwsh
         run: |
-          ./Infra/Scripts/Publish-Extension.ps1 -Target bicep-ext-azuredevops
+          ./Infra/Scripts/Publish-Extension.ps1 -Target azure-devops-extension

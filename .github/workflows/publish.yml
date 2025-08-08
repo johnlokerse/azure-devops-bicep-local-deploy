@@ -51,8 +51,9 @@ jobs:
           fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
           submodules: true
 
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+            dotnet-version: '9.0.x'
 
       - name: Log in to Azure
         uses: azure/login@v2

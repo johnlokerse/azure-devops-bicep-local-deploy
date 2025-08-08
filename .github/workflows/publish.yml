@@ -15,11 +15,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: true
-          
+
       - name: Log in to Azure
         uses: azure/login@v2
         with:
@@ -27,14 +28,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-        - name: Deployment Infra
-          uses: azure/bicep-deploy@v2
-          with:
-            type: deployment
-            operation: create
-            scope: subscription
-            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-            name: Development
-            location: westeurope
-            template-file: ./Infra/main.bicep
-            parameters-file: ./Infra/main.bicepparam
+      - name: Deployment Infra
+        uses: azure/bicep-deploy@v2
+        with:
+          type: deployment
+          operation: create
+          scope: subscription
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          name: Development
+          location: westeurope
+          template-file: ./Infra/main.bicep
+          parameters-file: ./Infra/main.bicepparam

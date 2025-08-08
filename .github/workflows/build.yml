@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-dotnet:
+    name: Build Extension
+    runs-on: ubuntu-latest
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+
+      - name: Build
+        run: |
+          dotnet build
+
+  publish-local:
+    name: Publish Locally
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+
+      - name: Install Bicep
+        run: |
+          az config set bicep.use_binary_from_path=false
+          az bicep install
+
+      - name: Publish Extension
+        shell: pwsh
+        run: |
+          ./Infra/Scripts/Publish-Extension.ps1 -Target bicep-ext-azuredevops

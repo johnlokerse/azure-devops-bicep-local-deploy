@@ -10,7 +10,7 @@ builder.AddBicepExtensionHost(args);
 builder.Services
     .AddBicepExtension(
         name: "AzureDevOps",
-        version: "0.0.1",
+        version: ThisAssembly.AssemblyInformationalVersion.Split('+')[0],
         isSingleton: true,
         typeAssembly: typeof(Program).Assembly,
         configurationType: typeof(Configuration))

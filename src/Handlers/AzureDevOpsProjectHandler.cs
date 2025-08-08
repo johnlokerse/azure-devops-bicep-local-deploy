@@ -8,13 +8,8 @@ using System.Net;
 
 namespace DevOpsExtension.Handlers;
 
-public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject, AzureDevOpsProjectIdentifiers, Configuration>
+public class AzureDevOpsProjectHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsProject, AzureDevOpsProjectIdentifiers>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = false
-    };
-
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
     {
         var existing = await GetProjectAsync(request.Config, request.Properties, cancellationToken);
@@ -119,7 +114,7 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
         using var client = CreateClient(configuration);
         var body = new { description = props.Description };
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
-        var resp = await client.PatchAsync($"{baseUrl}/{org}/_apis/projects/{projectId}?api-version=7.1-preview.4", content, ct);
+        var resp = await PatchAsync(client, $"{baseUrl}/{org}/_apis/projects/{projectId}?api-version=7.1-preview.4", content, ct);
     }
 
     private async Task<string> ResolveProcessTemplateIdAsync(HttpClient client, string org, string baseUrl, string processName, CancellationToken ct)
@@ -149,57 +144,8 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
         return "adcc42ab-9882-485e-a3ed-7678f01f66bc";
     }
 
-    private static (string org, string baseUrl) GetOrgAndBaseUrl(string organization)
-    {
-        if (organization.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-        {
-            var uri = new Uri(organization.TrimEnd('/'));
-            var org = uri.Segments.Last().Trim('/');
-            return (org, $"{uri.Scheme}://{uri.Host}");
-        }
-        return (organization, "https://dev.azure.com");
-    }
-
-    private static HttpClient CreateClient(Configuration configuration)
-    {
-        var pat = configuration.AccessToken ?? Environment.GetEnvironmentVariable("AZDO_PAT");
-        if (string.IsNullOrWhiteSpace(pat))
-        {
-            throw new InvalidOperationException("A PAT must be supplied via property 'pat' or AZDO_PAT environment variable.");
-        }
-        var client = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{pat}"));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        return client;
-    }
-
     private static bool IsWellFormed(string? state) =>
         string.Equals(state, "wellFormed", StringComparison.OrdinalIgnoreCase);
-
-    private static string? TryGetOperationIdFromResponse(HttpResponseMessage response, JsonElement? parsedBody)
-    {
-        try
-        {
-            if (parsedBody.HasValue && parsedBody.Value.ValueKind == JsonValueKind.Object &&
-                parsedBody.Value.TryGetProperty("id", out var idProp))
-            {
-                return idProp.GetString();
-            }
-        }
-        catch { }
-
-        var loc = response.Headers.Location;
-        if (loc != null)
-        {
-            var seg = loc.Segments.LastOrDefault();
-            if (!string.IsNullOrWhiteSpace(seg))
-            {
-                return seg.Trim('/');
-            }
-        }
-        return null;
-    }
 
     private static async Task WaitForProjectReadyAsync(HttpClient client, string org, string baseUrl, string projectName, HttpResponseMessage createResponse, CancellationToken ct)
     {
@@ -267,11 +213,3 @@ public class AzureDevOpsProjectHandler : TypedResourceHandler<AzureDevOpsProject
     }
 }
 
-internal static class HttpClientExtensions
-{
-    public static Task<HttpResponseMessage> PatchAsync(this HttpClient client, string requestUri, HttpContent content, CancellationToken ct)
-    {
-        var req = new HttpRequestMessage(new HttpMethod("PATCH"), requestUri) { Content = content };
-        return client.SendAsync(req, ct);
-    }
-}

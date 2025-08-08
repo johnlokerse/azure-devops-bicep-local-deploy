@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsExtension", "DevOpsExtension.csproj", "{8C546E0B-9041-1BB6-66D9-E5BB136C6B36}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsExtension", "src\DevOpsExtension.csproj", "{8C546E0B-9041-1BB6-66D9-E5BB136C6B36}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

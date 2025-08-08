@@ -13,8 +13,8 @@ function ExecSafe([scriptblock] $ScriptBlock) {
   }
 }
 
-$root="../../src/"
-$extName="bicep-ext-azuredevops"
+$root = "$PSScriptRoot/../.."
+$extName = "azure-devops-extension"
 
 # build various flavors
 ExecSafe { dotnet publish --configuration Release $root -r osx-arm64 }
@@ -23,8 +23,8 @@ ExecSafe { dotnet publish --configuration Release $root -r win-x64 }
 
 # publish to the registry
 ExecSafe { ~/.azure/bin/bicep publish-extension `
-  --bin-osx-arm64 "$root/bin/Release/net9.0/osx-arm64/publish/$extName" `
-  --bin-linux-x64 "$root/bin/Release/net9.0/linux-x64/publish/$extName" `
-  --bin-win-x64 "$root/bin/Release/net9.0/win-x64/publish/$extName.exe" `
-  --target "$target" `
+  --bin-osx-arm64 "$root/src/bin/Release/osx-arm64/publish/$extName" `
+  --bin-linux-x64 "$root/src/bin/Release/linux-x64/publish/$extName" `
+  --bin-win-x64 "$root/src/bin/Release/win-x64/publish/$extName.exe" `
+  --target "$Target" `
   --force }

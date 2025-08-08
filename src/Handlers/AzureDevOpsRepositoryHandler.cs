@@ -8,13 +8,8 @@ using System.Net;
 
 namespace DevOpsExtension.Handlers;
 
-public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepository, AzureDevOpsRepositoryIdentifiers, Configuration>
+public class AzureDevOpsRepositoryHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsRepository, AzureDevOpsRepositoryIdentifiers>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = false
-    };
-
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
     {
         var existing = await GetRepositoryAsync(request.Config, request.Properties, cancellationToken);
@@ -135,30 +130,5 @@ public class AzureDevOpsRepositoryHandler : TypedResourceHandler<AzureDevOpsRepo
             return true;
         }
         return false;
-    }
-
-    private static (string org, string baseUrl) GetOrgAndBaseUrl(string organization)
-    {
-        if (organization.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-        {
-            var uri = new Uri(organization.TrimEnd('/'));
-            var org = uri.Segments.Last().Trim('/');
-            return (org, $"{uri.Scheme}://{uri.Host}");
-        }
-        return (organization, "https://dev.azure.com");
-    }
-
-    private static HttpClient CreateClient(Configuration configuration)
-    {
-        var pat = configuration.AccessToken ?? Environment.GetEnvironmentVariable("AZDO_PAT");
-        if (string.IsNullOrWhiteSpace(pat))
-        {
-            throw new InvalidOperationException("A PAT must be supplied via property 'pat' or AZDO_PAT environment variable.");
-        }
-        var client = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{pat}"));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        return client;
     }
 }

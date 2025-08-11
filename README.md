@@ -5,9 +5,12 @@ This project demonstrates a custom Bicep Local Extension that can create Azure D
 > [!NOTE]
 > This is an experimental Bicep feature and is subject to change. Do not use it in production.
 
+> [!NOTE]
+> Community contributions are welcome!
+
 ## Current Capabilities
 
-Experimental / sample only. Limited functionality:
+Experimental / sample only. Limited functionality for now:
 
 - **Create** Azure DevOps Project
 - **Create** Azure DevOps Repos
@@ -164,7 +167,7 @@ bicep local-deploy Bicep/repository.bicepparam
 
 ## Security
 
-Prefer environment variable over passing PAT as a property. Secrets in parameters can leak into logs. Never commit real PATs.
+Prefer environment variable over passing PAT as a property. Secrets in parameters can leak into logs. Never commit real PATs. Exploring ways to use Workload Identity Federation instead of PAT.
 
 Export your PAT to avoid putting secrets in files:
 

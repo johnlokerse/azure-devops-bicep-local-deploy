@@ -1,57 +1,79 @@
 # Azure DevOps Bicep Local Extension (Experimental)
 
-This project demonstrates a custom Bicep Local Extension (C# / .NET 9) that can create (and idempotently ensure) an Azure DevOps configuration via the Azure DevOps REST API.
+This project demonstrates a custom Bicep Local Extension that can create Azure DevOps configuration via the Azure DevOps REST API using Bicep.
 
-## Status
+> [!NOTE]
+> This is an experimental Bicep feature and is subject to change. Do not use it in production.
+
+## Current Capabilities
 
 Experimental / sample only. Limited functionality:
 
-- Create Azure DevOps Project
-- Create Azure DevOps Repos
+- **Create** Azure DevOps Project
+- **Create** Azure DevOps Repos
+
+See the [Sample](./Sample/main.bicep) folder for an example Bicep template.
 
 ## Prerequisites
 
 - .NET 9 SDK
-- Bicep CLI v0.37.4+ (for `local-deploy` + local extensions)
-- Azure DevOps Personal Access Token (PAT) with at minimum: `Project and Team (Read, Write, & Manage)` scope.
+- Bicep CLI v0.37.4+ (for `local-deploy`)
 
-Export your PAT to avoid putting secrets in files:
+## How to use it locally or via an Azure Container Registry (ACR)
 
-```bash
-export AZDO_PAT="<your pat>"
+Here are the steps to run it either locally or using an ACR.
+
+### Local build
+
+Run script `Publish-Extension.ps1` from the folder [Infra/Scripts/](./Infra/Scripts/) to publish the project and to publish the extension locally for Bicep to use:
+
+```powershell
+./Infra/Scripts/Publish-Extension.ps1 -Target ./azure-devops-extension
 ```
 
-## Build & Publish Locally
+This creates the binary that contains the Azure DevOps API calls. Prepare your `bicepconfig.json` to refer to the binary. Set `experimentalFeaturesEnabled` -> `localDeploy` to `true` and refer the extension `azuredevops` to the binary:
 
-Publish self-contained binaries for the three supported runtimes (adjust for your OS/arch as needed):
-
-```bash
-dotnet publish --configuration Release -r osx-arm64 azure-devops-bicep-local.sln
-dotnet publish --configuration Release -r linux-x64 azure-devops-bicep-local.sln
-dotnet publish --configuration Release -r win-x64 azure-devops-bicep-local.sln
-
-bicep publish-extension --bin-osx-arm64 ./bin/Release/osx-arm64/publish/azure-devops-extension --bin-linux-x64 ./bin/Release/linux-x64/publish/azure-devops-extension --bin-win-x64 ./bin/Release/win-x64/publish/azure-devops-extension.exe --target ./bin/azure-devops-extension --force
+```json
+{
+  "experimentalFeaturesEnabled": {
+    "localDeploy": true
+  },
+  "extensions": {
+    "azuredevops": "<path-to-binary>/azure-devops-extension" // local
+  },
+  "implicitExtensions": []
+}
 ```
 
-`bicepconfig.json` is already configured to reference `./bin/azure-devops-extension`.
+Run `bicep local-deploy main.bicepparam` to test the extension locally. Also, see the example in the [Sample](./Sample/) folder.
 
-## Deploy (Local Execution)
+### Azure Container Registry build
 
-Populate `main.bicepparam` or override parameters on the command line, then:
+If you want to make use of an Azure Container Registry then I would recommend to fork the project, and run the GitHub Actions. Or, run the [Bicep template](./Infra/main.bicep) for the ACR deployment locally and then push it using the same principal
 
-```bash
-bicep local-deploy main.bicepparam
+```powershell
+[string] $target = "br:<registry-name>.azurecr.io/extensions/azuredevops:<version>"
+
+./Infra/Scripts/Publish-Extension.ps1 -Target $target
 ```
 
-Expected output (example):
+In the `bicepconfig.json` you refer to the ACR:
 
-```text
-Output projectId: 00000000-0000-0000-0000-000000000000
-Output projectState: wellFormed
-Output projectUrl: https://dev.azure.com/myorganization/_apis/projects/00000000-0000-0000-0000-000000000000
-Resource project (Create): Succeeded
-Result: Succeeded
+```json
+{
+  "experimentalFeaturesEnabled": {
+    "localDeploy": true
+  },
+  "extensions": {
+    "azuredevops": "br:<registry-name>.azurecr.io/extensions/azuredevops:<version>" // ACR
+  },
+  "implicitExtensions": []
+}
 ```
+
+## Public ACR
+
+If you want to try it out without effort, then you can use `br:azuredevopsbicep.azurecr.io/extensions/azuredevops:0.1.4` as the ACR reference.
 
 ## Bicep Usage Example
 
@@ -88,23 +110,50 @@ Create a repository in an existing project using a separate deployment:
 
 ```bicep
 targetScope = 'local'
-extension azuredevops
-
-param organization string
-param projectName string
-param repositoryName string
-@secure()
-param pat string = ''
-
-resource repo 'AzureDevOpsRepository' = {
-  name: repositoryName
-  organization: organization
-  project: projectName
-  pat: empty(pat) ? null : pat
+extension azuredevops with {
+  accessToken: pat
 }
 
-output repositoryId string = repo.repositoryId
-output repositoryWebUrl string = repo.webUrl
+@description('Azure DevOps organization name (short org slug, not full URL).')
+param organization string
+
+@description('Project name')
+param projectName string
+
+@description('Optional project description')
+param projectDescription string = ''
+
+@allowed([
+  'Private'
+  'Public'
+])
+param visibility string = 'Private'
+
+@description('Process name (Agile, Scrum, Basic, CMMI)')
+param processName string = 'Agile'
+
+@allowed([
+  'Git'
+  'Tfvc'
+])
+param sourceControl string = 'Git'
+
+@secure()
+@description('Azure DevOps PAT (leave empty to use AZDO_PAT environment variable).')
+param pat string?
+
+resource project 'AzureDevOpsProject' = {
+  name: projectName
+  organization: organization
+  description: empty(projectDescription) ? null : projectDescription
+  visibility: visibility
+  processName: processName
+  sourceControlType: sourceControl
+}
+
+output projectId string = project.projectId
+output projectState string = project.state
+output projectUrl string = project.url
 ```
 
 Deploy:
@@ -113,23 +162,15 @@ Deploy:
 bicep local-deploy Bicep/repository.bicepparam
 ```
 
-Outputs will include repository id and URLs. Idempotent: if repo exists, outputs are populated without error.
-
-## First Implementation Steps
-
-1. Read the Bicep local extension quickstart (done / mirrored here).
-2. Scaffold the .NET project (`DevOpsExtension.csproj`, `Program.cs`).
-3. Define resource model (`AzureDevOpsProject`) and identifiers.
-4. Implement handler (`AzureDevOpsProjectHandler`) with Preview + CreateOrUpdate using Azure DevOps REST API.
-5. Create Bicep configuration & sample templates (`bicepconfig.json`, `main.bicep`, `main.bicepparam`).
-6. Acquire PAT & export `AZDO_PAT` env var.
-7. Publish extension binaries with `dotnet publish` and `bicep publish-extension`.
-8. Execute `bicep local-deploy main.bicepparam` to test.
-9. Iterate: add advanced properties (teams, repos, policies) as needed.
-
-## Security Notes
+## Security
 
 Prefer environment variable over passing PAT as a property. Secrets in parameters can leak into logs. Never commit real PATs.
+
+Export your PAT to avoid putting secrets in files:
+
+```bash
+export AZDO_PAT="<your pat>"
+```
 
 ## Disclaimer
 

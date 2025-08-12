@@ -38,6 +38,7 @@ public abstract class AzureDevOpsResourceHandlerBase<TProps, TIdentifiers>
         var pat = configuration.AccessToken ?? Environment.GetEnvironmentVariable("AZDO_PAT");
         if (!string.IsNullOrWhiteSpace(pat))
         {
+            Console.WriteLine("Warning: A personal access token (PAT) is less secure than Azure Entra access tokens. Consider using Azure Entra tokens instead.");
             var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{pat}"));
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
             return client;
@@ -52,7 +53,7 @@ public abstract class AzureDevOpsResourceHandlerBase<TProps, TIdentifiers>
             var token = credential.GetToken(new TokenRequestContext(new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" })); // GUID is the well-known resource id of the Azure DevOsp rest api
             if (string.IsNullOrWhiteSpace(token.Token))
             {
-                throw new InvalidOperationException("Empty Azure AD access token returned for Azure DevOps scope.");
+                throw new InvalidOperationException("Empty Azure Entra access token returned for Azure DevOps scope.");
             }
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
             return client;

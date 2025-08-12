@@ -44,11 +44,9 @@ public abstract class AzureDevOpsResourceHandlerBase<TProps, TIdentifiers>
             return client;
         }
 
-        //    Resource ID for Azure DevOps first-party app: 499b84ac-1321-427f-aa17-267ca6975798
-        //    Use ".default" scope syntax for AAD v2 endpoint.
+        //    Resource ID for Azure DevOps first-party app: 499b84ac-1321-427f-aa17-267ca6975798 & Use ".default" scope syntax for AAD v2 endpoint.
         try
         {
-            // Static cache to avoid re-instantiating credentials repeatedly.
             var credential = DefaultAzureDevOpsCredential.Instance;
             var token = credential.GetToken(new TokenRequestContext(new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" })); // GUID is the well-known resource id of the Azure DevOsp rest api
             if (string.IsNullOrWhiteSpace(token.Token))

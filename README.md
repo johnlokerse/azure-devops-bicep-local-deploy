@@ -107,15 +107,14 @@ resource repository 'AzureDevOpsRepository' = {
 output id string = project.projectId
 ```
 
-## Security
+## Azure DevOps authentication
 
-Prefer environment variable over passing PAT as a property. Secrets in parameters can leak into logs. Never commit real PATs. Exploring ways to use Workload Identity Federation instead of PAT.
+This extension supports two authentication methods for Azure DevOps:
 
-Export your PAT to avoid putting secrets in files:
-
-```bash
-export AZDO_PAT="<your pat>"
-```
+|Type|Description|Other|
+|---|---|---|
+|Personal Access Token (PAT)|A PAT is a token that you can use to authenticate with Azure DevOps. It is less secure than Azure Entra access tokens and should be used with caution.|Consider using Azure Entra tokens instead.|
+|Workload Identity Federation|Azure Entra access tokens are more secure and should be preferred over PATs. They can be obtained using Azure Entra ID authentication.| When using this local-deploy feature in an Azure Pipeline, make sure the service principal used has the required permissions in Azure DevOps. |
 
 ## Disclaimer
 

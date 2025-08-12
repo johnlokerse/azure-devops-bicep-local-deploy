@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using Bicep.Local.Extension.Host.Handlers;
 using DevOpsExtension.Models;
+using Azure.Identity;
+using Azure.Core;
 
 namespace DevOpsExtension.Handlers;
 
@@ -30,16 +32,40 @@ public abstract class AzureDevOpsResourceHandlerBase<TProps, TIdentifiers>
 
     protected static HttpClient CreateClient(Configuration configuration)
     {
-        var pat = configuration.AccessToken ?? Environment.GetEnvironmentVariable("AZDO_PAT");
-        if (string.IsNullOrWhiteSpace(pat))
-        {
-            throw new InvalidOperationException("A PAT must be supplied via property 'pat' or AZDO_PAT environment variable.");
-        }
         var client = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{pat}"));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        return client;
+
+        var pat = configuration.AccessToken ?? Environment.GetEnvironmentVariable("AZDO_PAT");
+        if (!string.IsNullOrWhiteSpace(pat))
+        {
+            var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{pat}"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
+            return client;
+        }
+
+        //    Resource ID for Azure DevOps first-party app: 499b84ac-1321-427f-aa17-267ca6975798 & Use ".default" scope syntax for AAD v2 endpoint.
+        try
+        {
+            var credential = DefaultAzureDevOpsCredential.Instance;
+            var token = credential.GetToken(new TokenRequestContext(new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" })); // GUID is the well-known resource id of the Azure DevOps rest api
+            if (string.IsNullOrWhiteSpace(token.Token))
+            {
+                throw new InvalidOperationException("Empty Azure Entra access token returned for Azure DevOps scope.");
+            }
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
+            return client;
+        }
+        catch (Exception ex)
+        {
+            client.Dispose();
+            throw new InvalidOperationException("Failed to acquire Azure DevOps credentials. Provide a PAT (property 'pat' or AZDO_PAT) or ensure a federated / managed identity is configured.", ex);
+        }
+    }
+
+    // Internal helper to cache DefaultAzureCredential instance (which can be costly to build repeatedly)
+    private static class DefaultAzureDevOpsCredential
+    {
+        internal static readonly DefaultAzureCredential Instance = new(new DefaultAzureCredentialOptions());
     }
 
     protected static string? TryGetOperationIdFromResponse(HttpResponseMessage response, JsonElement? parsedBody)

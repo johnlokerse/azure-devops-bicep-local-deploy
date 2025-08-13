@@ -36,10 +36,10 @@ public class AzureDevOpsServiceConnection : AzureDevOpsServiceConnectionIdentifi
     public string? SubscriptionName { get; set; }
 
     [TypeProperty("Azure AD tenant id (directory id) containing the user-assigned managed identity.", ObjectTypePropertyFlags.Required)]
-    public string? TenantId { get; set; }
+    public required string TenantId { get; set; }
 
     [TypeProperty("ClientId (application id) of the user-assigned managed identity used for Workload Identity Federation.", ObjectTypePropertyFlags.Required)]
-    public string? ClientId { get; set; }
+    public required string ClientId { get; set; }
 
     [TypeProperty("Management group name. Required when scopeLevel = ManagementGroup.")]
     public string? ManagementGroupName { get; set; }

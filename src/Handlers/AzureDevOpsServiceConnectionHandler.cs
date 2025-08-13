@@ -17,7 +17,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
             PopulateOutputs(request.Properties, existing);
             await SetFederatedOutputsAsync(request.Config, request.Properties, cancellationToken);
         }
-        
+
         return GetResponse(request);
     }
 
@@ -169,7 +169,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
             throw new InvalidOperationException("ClientId is required for workload identity federation.");
         }
 
-        var scope = config.ScopeLevel ?? AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.Subscription;
+        var scope = config.ScopeLevel;
         if (scope == AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.Subscription)
         {
             if (string.IsNullOrWhiteSpace(config.SubscriptionId) || string.IsNullOrWhiteSpace(config.SubscriptionName))

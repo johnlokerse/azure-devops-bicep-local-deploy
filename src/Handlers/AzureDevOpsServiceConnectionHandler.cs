@@ -15,6 +15,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         if (existing is not null)
         {
             PopulateOutputs(request.Properties, existing);
+            await SetFederatedOutputsAsync(request.Config, request.Properties, cancellationToken);
         }
         return GetResponse(request);
     }
@@ -29,6 +30,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
             existing = await GetServiceConnectionAsync(request.Config, props, cancellationToken) ?? throw new InvalidOperationException("Service connection creation did not return service connection.");
         }
         PopulateOutputs(props, existing);
+        await SetFederatedOutputsAsync(request.Config, props, cancellationToken);
         return GetResponse(request);
     }
 
@@ -122,27 +124,35 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         }
     }
 
-    private static void ValidateProps(AzureDevOpsServiceConnection p)
+    private static void ValidateProps(AzureDevOpsServiceConnection config)
     {
-        if (string.IsNullOrWhiteSpace(p.TenantId))
+        // Mutually exclusive scope sets: either Subscription (subscriptionId + subscriptionName) OR Management Group (managementGroupName/Id)
+        var hasSubscriptionSet = !string.IsNullOrWhiteSpace(config.SubscriptionId) && !string.IsNullOrWhiteSpace(config.SubscriptionName);
+        var hasManagementGroupSet = !string.IsNullOrWhiteSpace(config.ManagementGroupName) || !string.IsNullOrWhiteSpace(config.ManagementGroupId);
+        if (hasSubscriptionSet && hasManagementGroupSet)
+        {
+            throw new InvalidOperationException("Provide either subscriptionId/subscriptionName OR managementGroupName/managementGroupId, not both.");
+        }
+
+        if (string.IsNullOrWhiteSpace(config.TenantId))
         {
             throw new InvalidOperationException("TenantId is required.");
         }
-        if (string.IsNullOrWhiteSpace(p.ClientId))
+        if (string.IsNullOrWhiteSpace(config.ClientId))
         {
             throw new InvalidOperationException("ClientId is required for workload identity federation.");
         }
-        var scope = p.ScopeLevel ?? AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.Subscription;
+        var scope = config.ScopeLevel ?? AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.Subscription;
         if (scope == AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.Subscription)
         {
-            if (string.IsNullOrWhiteSpace(p.SubscriptionId) || string.IsNullOrWhiteSpace(p.SubscriptionName))
+            if (string.IsNullOrWhiteSpace(config.SubscriptionId) || string.IsNullOrWhiteSpace(config.SubscriptionName))
             {
                 throw new InvalidOperationException("SubscriptionId and SubscriptionName are required for Subscription scope.");
             }
         }
         else if (scope == AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.ManagementGroup)
         {
-            if (string.IsNullOrWhiteSpace(p.ManagementGroupName))
+            if (string.IsNullOrWhiteSpace(config.ManagementGroupName))
             {
                 throw new InvalidOperationException("ManagementGroupName is required for ManagementGroup scope.");
             }
@@ -221,5 +231,36 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
     {
         var req = new HttpRequestMessage(new HttpMethod("PATCH"), uri) { Content = content };
         return client.SendAsync(req, ct);
+    }
+
+    private async Task SetFederatedOutputsAsync(Configuration configuration, AzureDevOpsServiceConnection props, CancellationToken ct)
+    {
+        try
+        {
+            var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
+            using var client = CreateClient(configuration);
+            // connection data endpoint to obtain org GUID (instanceId)
+            var resp = await client.GetAsync($"{baseUrl}/{org}/_apis/connectiondata?api-version=7.1-preview.1", ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return; // silently ignore; outputs remain unset
+            }
+            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            string? orgGuid = null;
+            if (json.TryGetProperty("instanceId", out var inst) && inst.ValueKind == JsonValueKind.String)
+            {
+                orgGuid = inst.GetString();
+            }
+            if (!string.IsNullOrWhiteSpace(orgGuid))
+            {
+                props.Issuer = $"https://vstoken.dev.azure.com/{orgGuid}";
+            }
+            // Always compute subject identifier (even if issuer failed) using org slug (not GUID)
+            props.SubjectIdentifier = $"sc://{org}/{props.Project}/{props.Name}";
+        }
+        catch
+        {
+            // ignore – optional outputs
+        }
     }
 }

@@ -29,10 +29,10 @@ public class AzureDevOpsServiceConnection : AzureDevOpsServiceConnectionIdentifi
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ServiceConnectionScopeLevel? ScopeLevel { get; set; } = ServiceConnectionScopeLevel.Subscription;
 
-    [TypeProperty("Azure subscription id (GUID).", ObjectTypePropertyFlags.Required)]
+    [TypeProperty("Azure subscription id (GUID). Required when scopeLevel = Subscription.")]
     public string? SubscriptionId { get; set; }
 
-    [TypeProperty("Azure subscription display name.", ObjectTypePropertyFlags.Required)]
+    [TypeProperty("Azure subscription display name. Required when scopeLevel = Subscription.")]
     public string? SubscriptionName { get; set; }
 
     [TypeProperty("Azure AD tenant id (directory id) containing the user-assigned managed identity.", ObjectTypePropertyFlags.Required)]
@@ -41,10 +41,10 @@ public class AzureDevOpsServiceConnection : AzureDevOpsServiceConnectionIdentifi
     [TypeProperty("ClientId (application id) of the user-assigned managed identity used for Workload Identity Federation.", ObjectTypePropertyFlags.Required)]
     public string? ClientId { get; set; }
 
-    [TypeProperty("Management group name (required when scopeLevel = ManagementGroup)")]
+    [TypeProperty("Management group name. Required when scopeLevel = ManagementGroup.")]
     public string? ManagementGroupName { get; set; }
 
-    [TypeProperty("Management group id (optional when scopeLevel = ManagementGroup)")]
+    [TypeProperty("Management group id. Required when scopeLevel = ManagementGroup.")]
     public string? ManagementGroupId { get; set; }
 
     [TypeProperty("Description for the service connection")]
@@ -54,12 +54,18 @@ public class AzureDevOpsServiceConnection : AzureDevOpsServiceConnectionIdentifi
     public bool GrantAllPipelines { get; set; }
 
     // Outputs
-    [TypeProperty("Authorization scheme actually used (output)")]
+    [TypeProperty("[OUTPUT] Authorization scheme actually used")]
     public string? AuthorizationScheme { get; set; }
 
-    [TypeProperty("Service connection id (GUID)")]
+    [TypeProperty("[OUTPUT]Service connection id (GUID)")]
     public string? ServiceConnectionId { get; set; }
 
-    [TypeProperty("Service connection URL")]
+    [TypeProperty("[OUTPUT] Service connection URL")]
     public string? Url { get; set; }
+
+    [TypeProperty("[OUTPUT] Workload Identity Federation Issuer")]
+    public string? Issuer { get; set; }
+
+    [TypeProperty("[OUTPUT] Workload Identity Federation Subject Identifier")]
+    public string? SubjectIdentifier { get; set; }
 }

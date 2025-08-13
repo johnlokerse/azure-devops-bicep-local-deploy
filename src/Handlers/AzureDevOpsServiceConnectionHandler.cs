@@ -17,6 +17,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
             PopulateOutputs(request.Properties, existing);
             await SetFederatedOutputsAsync(request.Config, request.Properties, cancellationToken);
         }
+        
         return GetResponse(request);
     }
 
@@ -29,6 +30,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
             await CreateServiceConnectionAsync(request.Config, props, cancellationToken);
             existing = await GetServiceConnectionAsync(request.Config, props, cancellationToken) ?? throw new InvalidOperationException("Service connection creation did not return service connection.");
         }
+
         PopulateOutputs(props, existing);
         await SetFederatedOutputsAsync(request.Config, props, cancellationToken);
         return GetResponse(request);
@@ -48,38 +50,54 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         props.AuthorizationScheme = sc.scheme;
     }
 
+    /// <summary>
+    /// Retrieves an existing service connection by name, or null if not found / not accessible.
+    /// Only expected HTTP/network/JSON errors are swallowed; other errors surface.
+    /// </summary>
     private async Task<dynamic?> GetServiceConnectionAsync(Configuration configuration, AzureDevOpsServiceConnection props, CancellationToken ct)
     {
+        var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
+        using var client = CreateClient(configuration);
         try
         {
-            var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-            using var client = CreateClient(configuration);
-            // list filtered by name as API doesn't provide direct by-name endpoint
-            var resp = await client.GetAsync($"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/serviceendpoint/endpoints?endpointNames={Uri.EscapeDataString(props.Name)}&api-version=7.1-preview.4", ct);
+            var url = $"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/serviceendpoint/endpoints?endpointNames={Uri.EscapeDataString(props.Name)}&api-version=7.1-preview.4";
+            var resp = await client.GetAsync(url, ct);
             if (!resp.IsSuccessStatusCode)
+            {
+                return null; // treat as not existing / inaccessible
+            }
+            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            if (!json.TryGetProperty("value", out var arr) || arr.ValueKind != JsonValueKind.Array)
             {
                 return null;
             }
-            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            if (json.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
+            foreach (var item in arr.EnumerateArray())
             {
-                foreach (var item in arr.EnumerateArray())
+                if (string.Equals(item.GetProperty("name").GetString(), props.Name, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (string.Equals(item.GetProperty("name").GetString(), props.Name, StringComparison.OrdinalIgnoreCase))
+                    return new
                     {
-                        return new
-                        {
-                            id = item.GetProperty("id").GetString(),
-                            name = item.GetProperty("name").GetString(),
-                            type = item.TryGetProperty("type", out var t) ? t.GetString() : null,
-                            url = item.TryGetProperty("url", out var u) ? u.GetString() : null,
-                            scheme = item.TryGetProperty("authorization", out var auth) && auth.TryGetProperty("scheme", out var sch) ? sch.GetString() : null
-                        };
-                    }
+                        id = item.GetProperty("id").GetString(),
+                        name = item.GetProperty("name").GetString(),
+                        type = item.TryGetProperty("type", out var t) ? t.GetString() : null,
+                        url = item.TryGetProperty("url", out var u) ? u.GetString() : null,
+                        scheme = item.TryGetProperty("authorization", out var auth) && auth.TryGetProperty("scheme", out var sch) ? sch.GetString() : null
+                    };
                 }
             }
         }
-        catch { }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException($"Failed to retrieve service connections for project '{props.Project}' in organization '{props.Organization}'.", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            throw new OperationCanceledException($"Retrieving service connection '{props.Name}' was canceled or timed out (org: '{props.Organization}', project: '{props.Project}').", ex, ct);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException("Received malformed JSON while parsing service connection list response.", ex);
+        }
         return null;
     }
 
@@ -105,22 +123,29 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         {
             try
             {
-                // Need the created id; quick lookup
                 var created = await GetServiceConnectionAsync(configuration, props, ct);
-                if (created != null)
+                if (created == null) return;
+                var permissionBody = new
                 {
-                    var permissionBody = new
-                    {
-                        allPipelines = new { authorized = true, authorizedBy = (string?)null, authorizedOn = (string?)null },
-                        pipelines = Array.Empty<object>(),
-                        resource = new { type = "endpoint", id = (string)created.id }
-                    };
-                    var permContent = new StringContent(JsonSerializer.Serialize(permissionBody, JsonOptions), Encoding.UTF8, "application/json");
-                    var permResp = await PatchPermissionsAsync(client, $"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/pipelines/pipelinePermissions/endpoint/{created.id}?api-version=7.1-preview.1", permContent, ct);
-                    permResp.Dispose();
-                }
+                    allPipelines = new { authorized = true, authorizedBy = (string?)null, authorizedOn = (string?)null },
+                    pipelines = Array.Empty<object>(),
+                    resource = new { type = "endpoint", id = (string)created.id }
+                };
+                var permContent = new StringContent(JsonSerializer.Serialize(permissionBody, JsonOptions), Encoding.UTF8, "application/json");
+                using var permResp = await PatchPermissionsAsync(client, $"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/pipelines/pipelinePermissions/endpoint/{created.id}?api-version=7.1-preview.1", permContent, ct);
             }
-            catch { }
+            catch (HttpRequestException ex)
+            {
+                throw new InvalidOperationException($"Failed to set pipeline permissions for service connection '{props.Name}'.", ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                throw new OperationCanceledException($"Setting pipeline permissions for service connection '{props.Name}' was canceled or timed out.", ex, ct);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidOperationException($"Malformed JSON encountered while setting pipeline permissions for service connection '{props.Name}'.", ex);
+            }
         }
     }
 
@@ -138,10 +163,12 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         {
             throw new InvalidOperationException("TenantId is required.");
         }
+
         if (string.IsNullOrWhiteSpace(config.ClientId))
         {
             throw new InvalidOperationException("ClientId is required for workload identity federation.");
         }
+
         var scope = config.ScopeLevel ?? AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.Subscription;
         if (scope == AzureDevOpsServiceConnection.ServiceConnectionScopeLevel.Subscription)
         {
@@ -235,32 +262,44 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
 
     private async Task SetFederatedOutputsAsync(Configuration configuration, AzureDevOpsServiceConnection props, CancellationToken ct)
     {
+        // Avoid recomputation if already populated
+        if (!string.IsNullOrWhiteSpace(props.Issuer) && !string.IsNullOrWhiteSpace(props.SubjectIdentifier)) return;
+
+        var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
+        using var client = CreateClient(configuration);
         try
         {
-            var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-            using var client = CreateClient(configuration);
-            // connection data endpoint to obtain org GUID (instanceId)
             var resp = await client.GetAsync($"{baseUrl}/{org}/_apis/connectiondata?api-version=7.1-preview.1", ct);
             if (!resp.IsSuccessStatusCode)
             {
-                return; // silently ignore; outputs remain unset
+                throw new InvalidOperationException($"Failed to retrieve connection data for organization '{props.Organization}' (status {(int)resp.StatusCode}).");
             }
+
             var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            string? orgGuid = null;
-            if (json.TryGetProperty("instanceId", out var inst) && inst.ValueKind == JsonValueKind.String)
+            if (!json.TryGetProperty("instanceId", out var inst) || inst.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(inst.GetString()))
             {
-                orgGuid = inst.GetString();
+                throw new InvalidOperationException($"Connection data for organization '{props.Organization}' did not contain a valid instanceId.");
             }
-            if (!string.IsNullOrWhiteSpace(orgGuid))
-            {
-                props.Issuer = $"https://vstoken.dev.azure.com/{orgGuid}";
-            }
-            // Always compute subject identifier (even if issuer failed) using org slug (not GUID)
+
+            var orgGuid = inst.GetString()!;
+            props.Issuer = $"https://vstoken.dev.azure.com/{orgGuid}";
             props.SubjectIdentifier = $"sc://{org}/{props.Project}/{props.Name}";
+            if (string.IsNullOrWhiteSpace(props.Issuer) || string.IsNullOrWhiteSpace(props.SubjectIdentifier))
+            {
+                throw new InvalidOperationException("Failed to compute issuer and subject identifier for service connection.");
+            }
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            // ignore – optional outputs
+            throw new InvalidOperationException($"HTTP error while retrieving organization GUID for '{props.Organization}'.", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            throw new OperationCanceledException($"Retrieving issuer/subject metadata was canceled or timed out for organization '{props.Organization}'.", ex, ct);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException($"Malformed JSON while retrieving organization GUID for '{props.Organization}'.", ex);
         }
     }
 }

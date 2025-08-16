@@ -34,6 +34,9 @@ param pat string?
 @description('Repository name')
 param repositoryName string
 
+@description('Artifact feed name')
+param artifactName string
+
 resource project 'AzureDevOpsProject' = {
   name: projectName
   organization: organization
@@ -49,6 +52,13 @@ resource repository 'AzureDevOpsRepository' = {
   project: project.name
 }
 
+resource artifactFeed 'AzureDevOpsArtifactFeed' = {
+  name: artifactName
+  organization: organization
+  project: project.name
+}
+
+// Outputs
 output projectId string = project.projectId
 output projectState string = project.state
 output projectUrl string = project.url
@@ -57,3 +67,6 @@ output repositoryId string = repository.repositoryId
 output repositoryWebUrl string = repository.webUrl
 output repositoryRemoteUrl string = repository.remoteUrl
 output repositorySshUrl string = repository.sshUrl
+
+output artifactFeedId string = artifactFeed.feedId
+output artifactFeedUrl string = artifactFeed.url

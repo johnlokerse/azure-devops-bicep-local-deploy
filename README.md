@@ -7,9 +7,6 @@ This project demonstrates a custom Bicep Local Extension that can create Azure D
 > [!NOTE]
 > This is an experimental Bicep feature and is subject to change. Do not use it in production.
 
-> [!NOTE]
-> Community contributions are welcome!
-
 ## Current Capabilities
 
 Experimental / sample only. Limited functionality for now:
@@ -111,11 +108,18 @@ output id string = project.projectId
 
 This extension supports two authentication methods for Azure DevOps:
 
-|Type|Description|Other|
-|---|---|---|
-|Personal Access Token (PAT)|A PAT is a token that you can use to authenticate with Azure DevOps. It is less secure than Azure Entra access tokens and should be used with caution.|Consider using Azure Entra tokens instead.|
-|Workload Identity Federation|Azure Entra access tokens are more secure and should be preferred over PATs. They can be obtained using Azure Entra ID authentication.| When using this local-deploy feature in an Azure Pipeline, make sure the service principal used has the required permissions in Azure DevOps. |
+| Type                         | Description                                                                                                                                            | Other                                                                                                                                         |
+|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| Personal Access Token (PAT)  | A PAT is a token that you can use to authenticate with Azure DevOps. It is less secure than Azure Entra access tokens and should be used with caution. | Consider using Azure Entra tokens instead.                                                                                                    |
+| Workload Identity Federation | Azure Entra access tokens are more secure and should be preferred over PATs. They can be obtained using Azure Entra ID authentication.                 | When using this local-deploy feature in an Azure Pipeline, make sure the service principal used has the required permissions in Azure DevOps. |
+
+## Contributing
+
+Want to contribute? Check out the [CONTRIBUTING.md][00] for more information.
 
 ## Disclaimer
 
 Sample only – not an official Microsoft supported extension. Use at your own risk.
+
+<!-- Link reference definitions -->
+[00]: CONTRIBUTING.md

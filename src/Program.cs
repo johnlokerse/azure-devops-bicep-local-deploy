@@ -15,7 +15,8 @@ builder.Services
         typeAssembly: typeof(Program).Assembly,
         configurationType: typeof(Configuration))
     .WithResourceHandler<AzureDevOpsProjectHandler>()
-    .WithResourceHandler<AzureDevOpsRepositoryHandler>();
+    .WithResourceHandler<AzureDevOpsRepositoryHandler>()
+    .WithResourceHandler<AzureDevOpsArtifactFeedHandler>();
 
 var app = builder.Build();
 

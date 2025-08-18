@@ -13,7 +13,7 @@ public class AzureDevOpsArtifactFeedIdentifiers
     public required string Organization { get; set; }
 
     [TypeProperty("Azure DevOps project name (optional - if not provided, feed will be organization-scoped)")]
-    public string? ProjectName { get; set; }
+    public string? Project { get; set; }
 }
 
 public class AzureDevOpsArtifactFeedPermission
@@ -78,5 +78,5 @@ public class AzureDevOpsArtifactFeed : AzureDevOpsArtifactFeedIdentifiers
     public string? Url { get; set; }
 
     [TypeProperty("Project reference (when project-scoped)", ObjectTypePropertyFlags.ReadOnly)]
-    public AzureDevOpsArtifactFeedProjectReference? Project { get; set; }
+    public AzureDevOpsArtifactFeedProjectReference? ProjectReference { get; set; }
 }

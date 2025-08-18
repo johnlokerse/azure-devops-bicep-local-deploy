@@ -21,7 +21,7 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
             request.Properties.Url = existing.url;
             if (existing.project is not null)
             {
-                request.Properties.Project = new AzureDevOpsArtifactFeedProjectReference
+                request.Properties.ProjectReference = new AzureDevOpsArtifactFeedProjectReference
                 {
                     Id = existing.project.id,
                     Name = existing.project.name
@@ -46,7 +46,7 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
         props.Url = existing.url;
         if (existing.project is not null)
         {
-            props.Project = new AzureDevOpsArtifactFeedProjectReference
+            props.ProjectReference = new AzureDevOpsArtifactFeedProjectReference
             {
                 Id = existing.project.id,
                 Name = existing.project.name
@@ -60,7 +60,7 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
     {
         Organization = properties.Organization,
         Name = properties.Name,
-        ProjectName = properties.ProjectName,
+        Project = properties.Project,
     };
 
     private static (string org, string baseUrl) GetOrgAndFeedsBaseUrl(string organization)
@@ -82,10 +82,10 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
             using var client = CreateClient(configuration);
             
             string apiUrl;
-            if (!string.IsNullOrWhiteSpace(props.ProjectName))
+            if (!string.IsNullOrWhiteSpace(props.Project))
             {
                 // Project-scoped feed
-                apiUrl = $"{baseUrl}/{org}/{Uri.EscapeDataString(props.ProjectName)}/_apis/packaging/feeds/{Uri.EscapeDataString(props.Name)}?api-version={FeedsApiVersion}";
+                apiUrl = $"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/packaging/feeds/{Uri.EscapeDataString(props.Name)}?api-version={FeedsApiVersion}";
             }
             else
             {
@@ -139,14 +139,14 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
             hideDeletedPackageVersions = props.HideDeletedPackageVersions,
             upstreamEnabled = props.UpstreamEnabled,
             upstreamSources,
-            project = await GetProjectReferenceAsync(client, props.Organization, props.ProjectName, ct)
+            project = await GetProjectReferenceAsync(client, props.Organization, props.Project, ct)
         };
 
         string apiUrl;
-        if (!string.IsNullOrWhiteSpace(props.ProjectName))
+        if (!string.IsNullOrWhiteSpace(props.Project))
         {
             // Project-scoped feed
-            apiUrl = $"{baseUrl}/{org}/{Uri.EscapeDataString(props.ProjectName)}/_apis/packaging/feeds?api-version={FeedsApiVersion}";
+            apiUrl = $"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/packaging/feeds?api-version={FeedsApiVersion}";
         }
         else
         {

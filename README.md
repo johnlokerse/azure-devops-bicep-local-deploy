@@ -14,6 +14,7 @@ Experimental / sample only. Limited functionality for now:
 - **Create** Azure DevOps Project
 - **Create** Azure DevOps Repos
 - **Create** Azure DevOps Artifact Feeds
+- **Create** Federated Service Connections
 
 See the [Sample](./Sample/main.bicep) folder for an example Bicep template.
 

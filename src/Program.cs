@@ -16,7 +16,8 @@ builder.Services
         configurationType: typeof(Configuration))
     .WithResourceHandler<AzureDevOpsProjectHandler>()
     .WithResourceHandler<AzureDevOpsRepositoryHandler>()
-    .WithResourceHandler<AzureDevOpsArtifactFeedHandler>();
+    .WithResourceHandler<AzureDevOpsArtifactFeedHandler>()
+    .WithResourceHandler<AzureDevOpsServiceConnectionHandler>();
 
 var app = builder.Build();
 

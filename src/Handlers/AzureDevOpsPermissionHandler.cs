@@ -8,9 +8,12 @@ using DevOpsExtension.Models;
 namespace DevOpsExtension.Handlers;
 
 /// <summary>
-/// Assigns a Microsoft Entra ID (Azure AD) group to a built-in Azure DevOps Project group
-/// (Readers or Contributors). This resource is idempotent: it imports the AAD group into
-/// Azure DevOps Graph if needed, locates the project role group, and ensures membership exists.
+/// Assigns a Microsoft Entra ID (Azure AD) group to a project security group in Azure DevOps.
+/// The role is free input and can be any built-in or custom project group name (for example:
+/// Readers, Contributors, Build Administrators, Endpoint Administrators, Endpoint Creators,
+/// Project Administrators, Project Valid Users, or a custom group you created).
+/// This resource is idempotent: it imports the AAD group into Azure DevOps Graph if needed,
+/// locates the project group by name within the project scope, and ensures membership exists.
 /// </summary>
 public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsPermission, AzureDevOpsPermissionIdentifiers>
 {
@@ -59,7 +62,7 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
         using var client = CreateClient(configuration);
         var projectId = await ResolveProjectIdOrThrowAsync(client, org, baseUrl, props.Project, cancellationToken);
         var groupDescriptor = await EnsureGroupImportedAsync(client, org, graphBase, props.GroupObjectId, cancellationToken);
-        var projectGroupDescriptor = await ResolveProjectGroupDescriptorAsync(client, org, graphBase, projectId, props.Role, cancellationToken);
+        var projectGroupDescriptor = await ResolveProjectGroupDescriptorAsync(client, org, graphBase, projectId, props.Project, props.Role, cancellationToken);
 
         // Check if membership already exists
         var isMember = await CheckMembershipAsync(client, graphBase, org, groupDescriptor, projectGroupDescriptor, cancellationToken);
@@ -147,9 +150,9 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
     }
 
     /// <summary>
-    /// Resolves the project-scoped built-in group descriptor matching the requested role (Readers or Contributors).
+    /// Resolves the project-scoped built-in group descriptor matching the requested role.
     /// </summary>
-    private static async Task<string> ResolveProjectGroupDescriptorAsync(HttpClient client, string org, string graphBase, string projectId, string role, CancellationToken cancellationToken)
+    private static async Task<string> ResolveProjectGroupDescriptorAsync(HttpClient client, string org, string graphBase, string projectId, string projectName, string role, CancellationToken cancellationToken)
     {
         // First resolve the project's Graph descriptor from its GUID
         var descResp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/descriptors/{projectId}?api-version={GraphApiVersion}", cancellationToken);
@@ -165,37 +168,82 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
             throw new InvalidOperationException("Project graph descriptor response missing 'value'.");
         }
 
-        // List groups for the project scope and pick the known Readers/Contributors built-in groups
-        var resp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/groups?scopeDescriptor={Uri.EscapeDataString(scopeDescriptor)}&api-version={GraphApiVersion}", cancellationToken);
-        if (!resp.IsSuccessStatusCode)
+        // List groups for the project scope with pagination and perform strict matching
+        var targetName = string.IsNullOrWhiteSpace(role) ? throw new InvalidOperationException("Role is required.") : role.Trim();
+        var expectedPrincipal = $"[{projectName}]\\{targetName}"; // project-qualified principal name
+
+        var baseListUrl = $"{graphBase}/{org}/_apis/graph/groups?scopeDescriptor={Uri.EscapeDataString(scopeDescriptor)}&api-version={GraphApiVersion}";
+        string? continuation = null;
+        var sampleGroups = new List<string>(capacity: 8);
+
+        while (true)
         {
-            var err = await resp.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException($"Failed to list project groups: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
-        }
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-        if (!json.TryGetProperty("value", out var arr) || arr.ValueKind != JsonValueKind.Array)
-        {
-            throw new InvalidOperationException("Unexpected response format when listing project groups.");
+            var listUrl = continuation is null ? baseListUrl : baseListUrl + "&continuationToken=" + Uri.EscapeDataString(continuation);
+            var resp = await client.GetAsync(listUrl, cancellationToken);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync(cancellationToken);
+                throw new InvalidOperationException($"Failed to list project groups: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
+            }
+
+            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+            if (json.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in arr.EnumerateArray())
+                {
+                    var desc = GetString(item, "descriptor");
+                    var displayName = GetString(item, "displayName");
+                    var principalName = GetString(item, "principalName");
+                    var domain = GetString(item, "domain");
+
+                    // Only consider project-scoped groups: domain contains Classification/TeamProject
+                    var isProjectDomain = !string.IsNullOrWhiteSpace(domain) &&
+                        domain.Contains("Classification/TeamProject", StringComparison.OrdinalIgnoreCase);
+                    if (!isProjectDomain)
+                    {
+                        continue;
+                    }
+
+                    // collect a few names for diagnostics
+                    if (sampleGroups.Count < 8 && !string.IsNullOrWhiteSpace(displayName))
+                    {
+                        sampleGroups.Add(displayName!);
+                    }
+
+                    // Strict match by displayName
+                    if (!string.IsNullOrWhiteSpace(displayName) &&
+                        string.Equals(displayName, targetName, StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(desc))
+                    {
+                        return desc!;
+                    }
+
+                    // Strict match by principalName (project-qualified)
+                    if (!string.IsNullOrWhiteSpace(principalName) &&
+                        string.Equals(principalName, expectedPrincipal, StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(desc))
+                    {
+                        return desc!;
+                    }
+                }
+            }
+
+            if (resp.Headers.TryGetValues("X-MS-ContinuationToken", out var values))
+            {
+                continuation = values is null ? null : System.Linq.Enumerable.FirstOrDefault(values);
+                if (string.IsNullOrEmpty(continuation))
+                {
+                    break;
+                }
+            }
+            else
+            {
+                break;
+            }
         }
 
-        var targetName = NormalizeRole(role);
-        foreach (var item in arr.EnumerateArray())
-        {
-            var desc = GetString(item, "descriptor");
-            var displayName = GetString(item, "displayName");
-            if (string.Equals(displayName, targetName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(desc))
-            {
-                return desc!;
-            }
-            // Fallback: principalName may contain project-qualified name including the role
-            var principalName = GetString(item, "principalName");
-            if (!string.IsNullOrWhiteSpace(principalName) && principalName!.Contains(targetName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(desc))
-            {
-                return desc!;
-            }
-        }
-        // As a fallback try known well-known descriptors might not be stable; better to throw
-        throw new InvalidOperationException($"Could not locate the '{targetName}' security group for project.");
+        var samples = sampleGroups.Count == 0 ? "none" : string.Join(", ", sampleGroups);
+        throw new InvalidOperationException($"Role '{targetName}' does not exist in project '{projectName}'. Available examples: {samples}.");
     }
 
     /// <summary>
@@ -228,27 +276,6 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
             var err = await resp.Content.ReadAsStringAsync(cancellationToken);
             throw new InvalidOperationException($"Failed to add group membership: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
         }
-    }
-
-    private static string NormalizeRole(string role)
-    {
-        var roleNorm = role?.Trim();
-        if (string.IsNullOrWhiteSpace(roleNorm))
-        {
-            throw new InvalidOperationException("Role is required. Allowed values: Readers, Contributors.");
-        }
-
-        if (string.Equals(roleNorm, "readers", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Readers";
-        }
-
-        if (string.Equals(roleNorm, "contributors", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Contributors";
-        }
-
-        throw new InvalidOperationException($"Unsupported role '{role}'. Allowed values: Readers, Contributors.");
     }
 
     private static string? GetString(JsonElement element, string propertyName)

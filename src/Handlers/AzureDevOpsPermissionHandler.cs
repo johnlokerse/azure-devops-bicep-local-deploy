@@ -7,25 +7,34 @@ using DevOpsExtension.Models;
 
 namespace DevOpsExtension.Handlers;
 
+/// <summary>
+/// Assigns a Microsoft Entra ID (Azure AD) group to a built-in Azure DevOps Project group
+/// (Readers or Contributors). This resource is idempotent: it imports the AAD group into
+/// Azure DevOps Graph if needed, locates the project role group, and ensures membership exists.
+/// </summary>
 public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsPermission, AzureDevOpsPermissionIdentifiers>
 {
+    private const string GraphApiVersion = "7.1-preview.1";
+
+    /// <inheritdoc />
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
     {
         var props = request.Properties;
-        var (assigned, groupDesc, projectGroupDesc) = await EnsureGraphEntitiesResolvedAsync(request.Config, props, resolveOnly: true, cancellationToken);
+        var (assigned, groupDescriptor, projectGroupDescriptor) = await EnsureGraphEntitiesResolvedAsync(request.Config, props, resolveOnly: true, cancellationToken);
         props.Assigned = assigned;
-        props.GroupDescriptor = groupDesc;
-        props.ProjectGroupDescriptor = projectGroupDesc;
+        props.GroupDescriptor = groupDescriptor;
+        props.ProjectGroupDescriptor = projectGroupDescriptor;
         return GetResponse(request);
     }
 
+    /// <inheritdoc />
     protected override async Task<ResourceResponse> CreateOrUpdate(ResourceRequest request, CancellationToken cancellationToken)
     {
         var props = request.Properties;
-        var (assigned, groupDesc, projectGroupDesc) = await EnsureGraphEntitiesResolvedAsync(request.Config, props, resolveOnly: false, cancellationToken);
+        var (assigned, groupDescriptor, projectGroupDescriptor) = await EnsureGraphEntitiesResolvedAsync(request.Config, props, resolveOnly: false, cancellationToken);
         props.Assigned = assigned;
-        props.GroupDescriptor = groupDesc;
-        props.ProjectGroupDescriptor = projectGroupDesc;
+        props.GroupDescriptor = groupDescriptor;
+        props.ProjectGroupDescriptor = projectGroupDescriptor;
         return GetResponse(request);
     }
 
@@ -35,30 +44,41 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
         Project = properties.Project,
     };
 
-    private async Task<(bool assigned, string? groupDescriptor, string? projectGroupDescriptor)> EnsureGraphEntitiesResolvedAsync(Configuration configuration, AzureDevOpsPermission props, bool resolveOnly, CancellationToken ct)
+    /// <summary>
+    /// Ensures the AAD group is imported into ADO Graph, resolves the target project role group,
+    /// and creates the membership if necessary.
+    /// </summary>
+    private async Task<(bool assigned, string? groupDescriptor, string? projectGroupDescriptor)> EnsureGraphEntitiesResolvedAsync(
+        Configuration configuration,
+        AzureDevOpsPermission props,
+        bool resolveOnly,
+        CancellationToken cancellationToken)
     {
         var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
         var graphBase = GetGraphBaseUrl(baseUrl);
         using var client = CreateClient(configuration);
-        var projectId = await ResolveProjectIdOrThrowAsync(client, org, baseUrl, props.Project, ct);
-        var groupDescriptor = await EnsureGroupImportedAsync(client, org, graphBase, props.GroupObjectId, ct);
-        var projectGroupDescriptor = await ResolveProjectGroupDescriptorAsync(client, org, graphBase, projectId, props.Role, ct);
+        var projectId = await ResolveProjectIdOrThrowAsync(client, org, baseUrl, props.Project, cancellationToken);
+        var groupDescriptor = await EnsureGroupImportedAsync(client, org, graphBase, props.GroupObjectId, cancellationToken);
+        var projectGroupDescriptor = await ResolveProjectGroupDescriptorAsync(client, org, graphBase, projectId, props.Role, cancellationToken);
 
         // Check if membership already exists
-        var isMember = await CheckMembershipAsync(client, graphBase, org, groupDescriptor, projectGroupDescriptor, ct);
+        var isMember = await CheckMembershipAsync(client, graphBase, org, groupDescriptor, projectGroupDescriptor, cancellationToken);
         if (!isMember && !resolveOnly)
         {
             // Add membership
-            await AddMembershipAsync(client, graphBase, org, groupDescriptor, projectGroupDescriptor, ct);
+            await AddMembershipAsync(client, graphBase, org, groupDescriptor, projectGroupDescriptor, cancellationToken);
 
             // Verify
-            isMember = await CheckMembershipAsync(client, graphBase, org, groupDescriptor, projectGroupDescriptor, ct);
+            isMember = await CheckMembershipAsync(client, graphBase, org, groupDescriptor, projectGroupDescriptor, cancellationToken);
         }
 
         return (isMember, groupDescriptor, projectGroupDescriptor);
     }
 
-    private static async Task<string> EnsureGroupImportedAsync(HttpClient client, string org, string graphBase, string entraGroupObjectId, CancellationToken ct)
+    /// <summary>
+    /// Ensures the specified Entra group (by objectId) exists in Azure DevOps Graph and returns its descriptor.
+    /// </summary>
+    private static async Task<string> EnsureGroupImportedAsync(HttpClient client, string org, string graphBase, string entraGroupObjectId, CancellationToken cancellationToken)
     {
         // Validate GUID format early to reduce surprises
         if (!Guid.TryParse(entraGroupObjectId, out _))
@@ -66,29 +86,29 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
             throw new InvalidOperationException($"GroupObjectId '{entraGroupObjectId}' is not a valid GUID for an Entra ID group.");
         }
 
-        var baseListUrl = $"{graphBase}/{org}/_apis/graph/groups?subjectTypes=aadgp&api-version=7.1-preview.1";
+        var baseListUrl = $"{graphBase}/{org}/_apis/graph/groups?subjectTypes=aadgp&api-version={GraphApiVersion}";
         string? continuation = null;
         while (true)
         {
             var listUrl = continuation is null ? baseListUrl : baseListUrl + "&continuationToken=" + Uri.EscapeDataString(continuation);
-            var listResp = await client.GetAsync(listUrl, ct);
+            var listResp = await client.GetAsync(listUrl, cancellationToken);
             if (!listResp.IsSuccessStatusCode)
             {
                 break;
             }
-            var listJson = await listResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            var listJson = await listResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
             if (listJson.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array && arr.GetArrayLength() > 0)
             {
                 foreach (var item in arr.EnumerateArray())
                 {
-                    var origin = item.TryGetProperty("origin", out var o) ? o.GetString() : null;
-                    var subjectKind = item.TryGetProperty("subjectKind", out var sk) ? sk.GetString() : null;
-                    var originId = item.TryGetProperty("originId", out var oid) ? oid.GetString() : null;
+                    var origin = GetString(item, "origin");
+                    var subjectKind = GetString(item, "subjectKind");
+                    var originId = GetString(item, "originId");
                     if (string.Equals(origin, "aad", StringComparison.OrdinalIgnoreCase) &&
                         string.Equals(subjectKind, "group", StringComparison.OrdinalIgnoreCase) &&
                         string.Equals(originId, entraGroupObjectId, StringComparison.OrdinalIgnoreCase))
                     {
-                        return item.GetProperty("descriptor").GetString()!;
+                        return GetString(item, "descriptor")!;
                     }
                 }
             }
@@ -110,69 +130,65 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
         // Not present, create/import via Graph groups create
         var body = new { originId = entraGroupObjectId };
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
-        var createResp = await client.PostAsync($"{graphBase}/{org}/_apis/graph/groups?api-version=7.1-preview.1", content, ct);
+        var createResp = await client.PostAsync($"{graphBase}/{org}/_apis/graph/groups?api-version={GraphApiVersion}", content, cancellationToken);
         if (!createResp.IsSuccessStatusCode)
         {
-            var err = await createResp.Content.ReadAsStringAsync(ct);
+            var err = await createResp.Content.ReadAsStringAsync(cancellationToken);
             throw new InvalidOperationException($"Failed to import Entra ID group into Azure DevOps Graph: {(int)createResp.StatusCode} {createResp.ReasonPhrase} {err}");
         }
-        var json = await createResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-        var createdOrigin = json.TryGetProperty("origin", out var co) ? co.GetString() : null;
-        var createdSubjectKind = json.TryGetProperty("subjectKind", out var csk) ? csk.GetString() : null;
+        var json = await createResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        var createdOrigin = GetString(json, "origin");
+        var createdSubjectKind = GetString(json, "subjectKind");
         if (!string.Equals(createdOrigin, "aad", StringComparison.OrdinalIgnoreCase) || !string.Equals(createdSubjectKind, "group", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Entra group import returned a non-Entra or non-group subject.");
         }
-        return json.GetProperty("descriptor").GetString()!;
+        return GetString(json, "descriptor")!;
     }
 
-    private static async Task<string> ResolveProjectGroupDescriptorAsync(HttpClient client, string org, string graphBase, string projectId, string role, CancellationToken ct)
+    /// <summary>
+    /// Resolves the project-scoped built-in group descriptor matching the requested role (Readers or Contributors).
+    /// </summary>
+    private static async Task<string> ResolveProjectGroupDescriptorAsync(HttpClient client, string org, string graphBase, string projectId, string role, CancellationToken cancellationToken)
     {
         // First resolve the project's Graph descriptor from its GUID
-        var descResp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/descriptors/{projectId}?api-version=7.1-preview.1", ct);
+        var descResp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/descriptors/{projectId}?api-version={GraphApiVersion}", cancellationToken);
         if (!descResp.IsSuccessStatusCode)
         {
-            var err = await descResp.Content.ReadAsStringAsync(ct);
+            var err = await descResp.Content.ReadAsStringAsync(cancellationToken);
             throw new InvalidOperationException($"Failed to resolve project graph descriptor: {(int)descResp.StatusCode} {descResp.ReasonPhrase} {err}");
         }
-        var descJson = await descResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-        var scopeDescriptor = descJson.TryGetProperty("value", out var val) ? val.GetString() : null;
+        var descJson = await descResp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        var scopeDescriptor = GetString(descJson, "value");
         if (string.IsNullOrWhiteSpace(scopeDescriptor))
         {
             throw new InvalidOperationException("Project graph descriptor response missing 'value'.");
         }
 
         // List groups for the project scope and pick the known Readers/Contributors built-in groups
-        var resp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/groups?scopeDescriptor={Uri.EscapeDataString(scopeDescriptor)}&api-version=7.1-preview.1", ct);
+        var resp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/groups?scopeDescriptor={Uri.EscapeDataString(scopeDescriptor)}&api-version={GraphApiVersion}", cancellationToken);
         if (!resp.IsSuccessStatusCode)
         {
-            var err = await resp.Content.ReadAsStringAsync(ct);
+            var err = await resp.Content.ReadAsStringAsync(cancellationToken);
             throw new InvalidOperationException($"Failed to list project groups: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
         }
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
         if (!json.TryGetProperty("value", out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidOperationException("Unexpected response format when listing project groups.");
         }
 
-        var roleNorm = role?.Trim();
-        if (string.IsNullOrWhiteSpace(roleNorm))
-        {
-            throw new InvalidOperationException("Role is required. Allowed values: Readers, Contributors.");
-        }
-        string targetName = string.Equals(roleNorm, "readers", StringComparison.OrdinalIgnoreCase) ? "Readers"
-            : string.Equals(roleNorm, "contributors", StringComparison.OrdinalIgnoreCase) ? "Contributors"
-            : throw new InvalidOperationException($"Unsupported role '{role}'. Allowed values: Readers, Contributors.");
+        var targetName = NormalizeRole(role);
         foreach (var item in arr.EnumerateArray())
         {
-            var desc = item.TryGetProperty("descriptor", out var d) ? d.GetString() : null;
-            var displayName = item.TryGetProperty("displayName", out var dn) ? dn.GetString() : null;
+            var desc = GetString(item, "descriptor");
+            var displayName = GetString(item, "displayName");
             if (string.Equals(displayName, targetName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(desc))
             {
                 return desc!;
             }
             // Fallback: principalName may contain project-qualified name including the role
-            var principalName = item.TryGetProperty("principalName", out var pn) ? pn.GetString() : null;
+            var principalName = GetString(item, "principalName");
             if (!string.IsNullOrWhiteSpace(principalName) && principalName!.Contains(targetName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(desc))
             {
                 return desc!;
@@ -182,9 +198,12 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
         throw new InvalidOperationException($"Could not locate the '{targetName}' security group for project.");
     }
 
-    private static async Task<bool> CheckMembershipAsync(HttpClient client, string graphBase, string org, string memberDescriptor, string containerDescriptor, CancellationToken ct)
+    /// <summary>
+    /// Checks if a membership exists between the member and container descriptors.
+    /// </summary>
+    private static async Task<bool> CheckMembershipAsync(HttpClient client, string graphBase, string org, string memberDescriptor, string containerDescriptor, CancellationToken cancellationToken)
     {
-        var resp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/memberships/{Uri.EscapeDataString(memberDescriptor)}/{Uri.EscapeDataString(containerDescriptor)}?api-version=7.1-preview.1", ct);
+        var resp = await client.GetAsync($"{graphBase}/{org}/_apis/graph/memberships/{Uri.EscapeDataString(memberDescriptor)}/{Uri.EscapeDataString(containerDescriptor)}?api-version={GraphApiVersion}", cancellationToken);
         if (resp.StatusCode == System.Net.HttpStatusCode.OK)
         {
             return true;
@@ -197,14 +216,45 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
         return false;
     }
 
-    private static async Task AddMembershipAsync(HttpClient client, string graphBase, string org, string memberDescriptor, string containerDescriptor, CancellationToken ct)
+    /// <summary>
+    /// Adds the membership between the member and container descriptors.
+    /// </summary>
+    private static async Task AddMembershipAsync(HttpClient client, string graphBase, string org, string memberDescriptor, string containerDescriptor, CancellationToken cancellationToken)
     {
         var content = new StringContent("{}", Encoding.UTF8, "application/json");
-        var resp = await client.PutAsync($"{graphBase}/{org}/_apis/graph/memberships/{Uri.EscapeDataString(memberDescriptor)}/{Uri.EscapeDataString(containerDescriptor)}?api-version=7.1-preview.1", content, ct);
+        var resp = await client.PutAsync($"{graphBase}/{org}/_apis/graph/memberships/{Uri.EscapeDataString(memberDescriptor)}/{Uri.EscapeDataString(containerDescriptor)}?api-version={GraphApiVersion}", content, cancellationToken);
         if (!resp.IsSuccessStatusCode)
         {
-            var err = await resp.Content.ReadAsStringAsync(ct);
+            var err = await resp.Content.ReadAsStringAsync(cancellationToken);
             throw new InvalidOperationException($"Failed to add group membership: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
         }
+    }
+
+    private static string NormalizeRole(string role)
+    {
+        var roleNorm = role?.Trim();
+        if (string.IsNullOrWhiteSpace(roleNorm))
+        {
+            throw new InvalidOperationException("Role is required. Allowed values: Readers, Contributors.");
+        }
+
+        if (string.Equals(roleNorm, "readers", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Readers";
+        }
+
+        if (string.Equals(roleNorm, "contributors", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Contributors";
+        }
+
+        throw new InvalidOperationException($"Unsupported role '{role}'. Allowed values: Readers, Contributors.");
+    }
+
+    private static string? GetString(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var value)
+            ? value.ValueKind == JsonValueKind.Null ? null : value.GetString()
+            : null;
     }
 }

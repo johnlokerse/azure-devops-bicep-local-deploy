@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Net.Http.Json;
 using Bicep.Local.Extension.Host.Handlers;
 using DevOpsExtension.Models;
 using Azure.Identity;
@@ -96,5 +97,48 @@ public abstract class AzureDevOpsResourceHandlerBase<TProps, TIdentifiers>
     {
         var req = new HttpRequestMessage(new HttpMethod("PATCH"), requestUri) { Content = content };
         return client.SendAsync(req, ct);
+    }
+
+    /// <summary>
+    /// Returns the correct base host for Azure DevOps Graph APIs.
+    /// For dev.azure.com it uses vssps.dev.azure.com; otherwise returns the provided baseUrl.
+    /// </summary>
+    protected static string GetGraphBaseUrl(string baseUrl)
+    {
+        var host = new Uri(baseUrl).Host;
+        return host.Contains("dev.azure.com", StringComparison.OrdinalIgnoreCase)
+            ? "https://vssps.dev.azure.com"
+            : baseUrl;
+    }
+
+    /// <summary>
+    /// Best-effort lookup of a project's GUID by name. Returns null if not found or on non-success.
+    /// </summary>
+    protected static async Task<string?> TryResolveProjectIdAsync(HttpClient client, string org, string baseUrl, string projectName, CancellationToken ct)
+    {
+        var resp = await client.GetAsync($"{baseUrl}/{org}/_apis/projects/{Uri.EscapeDataString(projectName)}?api-version=7.1-preview.4", ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        if (json.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String)
+        {
+            return idProp.GetString();
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Strict project id lookup that throws a concise error when the project is not found or inaccessible.
+    /// </summary>
+    protected static async Task<string> ResolveProjectIdOrThrowAsync(HttpClient client, string org, string baseUrl, string projectName, CancellationToken ct)
+    {
+        var id = await TryResolveProjectIdAsync(client, org, baseUrl, projectName, ct);
+        if (!string.IsNullOrWhiteSpace(id))
+        {
+            return id!;
+        }
+        throw new InvalidOperationException($"Project '{projectName}' not found or inaccessible in organization '{org}'.");
     }
 }

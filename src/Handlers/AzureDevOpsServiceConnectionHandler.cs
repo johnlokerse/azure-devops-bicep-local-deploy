@@ -106,7 +106,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         ValidateProps(props);
         var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
         using var client = CreateClient(configuration);
-        var projectId = await ResolveProjectIdAsync(client, org, baseUrl, props.Project, ct);
+        var projectId = await ResolveProjectIdOrThrowAsync(client, org, baseUrl, props.Project, ct);
         object body = BuildCreationBody(props, projectId, baseUrl, org);
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
         var resp = await client.PostAsync($"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/serviceendpoint/endpoints?api-version=7.1-preview.4", content, ct);
@@ -242,17 +242,7 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         };
     }
 
-    private static async Task<string> ResolveProjectIdAsync(HttpClient client, string org, string baseUrl, string projectName, CancellationToken ct)
-    {
-        var resp = await client.GetAsync($"{baseUrl}/{org}/_apis/projects/{Uri.EscapeDataString(projectName)}?api-version=7.1-preview.4", ct);
-        if (!resp.IsSuccessStatusCode)
-        {
-            var err = await resp.Content.ReadAsStringAsync(ct);
-            throw new InvalidOperationException($"Project '{projectName}' not found or inaccessible: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
-        }
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-        return json.GetProperty("id").GetString()!;
-    }
+    // project id resolution now centralized in base class
 
     private static Task<HttpResponseMessage> PatchPermissionsAsync(HttpClient client, string uri, HttpContent content, CancellationToken ct)
     {

@@ -8,11 +8,11 @@ using DevOpsExtension.Models;
 namespace DevOpsExtension.Handlers;
 
 /// <summary>
-/// Assigns a Microsoft Entra ID (Azure AD) group to a project security group in Azure DevOps.
+/// Assigns a Microsoft Entra ID group to a project security group in Azure DevOps.
 /// The role is free input and can be any built-in or custom project group name (for example:
 /// Readers, Contributors, Build Administrators, Endpoint Administrators, Endpoint Creators,
-/// Project Administrators, Project Valid Users, or a custom group you created).
-/// This resource is idempotent: it imports the AAD group into Azure DevOps Graph if needed,
+/// Project Administrators, Project Valid Users, or a custom role you created).
+/// This resource is idempotent: it imports the Entra ID group into Azure DevOps Graph if needed,
 /// locates the project group by name within the project scope, and ensures membership exists.
 /// </summary>
 public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsPermission, AzureDevOpsPermissionIdentifiers>
@@ -20,7 +20,6 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
     private const string GraphApiVersion = "7.1-preview.1";
     private const string ContinuationHeader = "X-MS-ContinuationToken";
 
-    /// <inheritdoc />
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
     {
         var props = request.Properties;
@@ -31,7 +30,6 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
         return GetResponse(request);
     }
 
-    /// <inheritdoc />
     protected override async Task<ResourceResponse> CreateOrUpdate(ResourceRequest request, CancellationToken cancellationToken)
     {
         var props = request.Properties;

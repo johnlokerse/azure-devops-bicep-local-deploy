@@ -174,7 +174,7 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
 
         var baseListUrl = $"{graphBase}/{org}/_apis/graph/groups?scopeDescriptor={Uri.EscapeDataString(scopeDescriptor)}&api-version={GraphApiVersion}";
         string? continuation = null;
-        var sampleGroups = new List<string>(capacity: 8);
+        var existingRolesGroups = new List<string>(capacity: 8);
 
         while (true)
         {
@@ -205,9 +205,9 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
                     }
 
                     // collect a few names for diagnostics
-                    if (sampleGroups.Count < 8 && !string.IsNullOrWhiteSpace(displayName))
+                    if (existingRolesGroups.Count < 8 && !string.IsNullOrWhiteSpace(displayName))
                     {
-                        sampleGroups.Add(displayName!);
+                        existingRolesGroups.Add(displayName!);
                     }
 
                     // Strict match by displayName
@@ -242,8 +242,8 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
             }
         }
 
-        var samples = sampleGroups.Count == 0 ? "none" : string.Join(", ", sampleGroups);
-        throw new InvalidOperationException($"Role '{targetName}' does not exist in project '{projectName}'. Available examples: {samples}.");
+        var existingRolesGroupsList = existingRolesGroups.Count == 0 ? "none" : string.Join(", ", existingRolesGroups);
+        throw new InvalidOperationException($"Role '{targetName}' does not exist in project '{projectName}'. Available examples: {existingRolesGroupsList}.");
     }
 
     /// <summary>

@@ -1,7 +1,5 @@
 targetScope = 'local'
-extension azuredevops with {
-  accessToken: pat
-}
+extension azuredevops
 
 @description('Azure DevOps organization name (short org slug, not full URL).')
 param organization string
@@ -27,15 +25,17 @@ param processName string = 'Agile'
 ])
 param sourceControl string = 'Git'
 
-@secure()
-@description('Azure DevOps PAT (leave empty to use AZDO_PAT environment variable).')
-param pat string?
-
 @description('Repository name')
 param repositoryName string
 
 @description('Artifact feed name')
 param artifactName string
+
+@description('Entra ID group objectId (GUID) to assign to the project role')
+param entraGroupObjectId string?
+
+@description('Project role to grant to the Entra group')
+param azureDevOpsRole string?
 
 resource project 'AzureDevOpsProject' = {
   name: projectName
@@ -56,6 +56,13 @@ resource artifactFeed 'AzureDevOpsArtifactFeed' = {
   name: artifactName
   organization: organization
   project: project.name
+}
+
+resource readerPermission 'AzureDevOpsPermission' = if (!empty(entraGroupObjectId) && !empty(azureDevOpsRole)) {
+  groupObjectId: entraGroupObjectId!
+  organization: organization
+  project: project.name
+  role: azureDevOpsRole!
 }
 
 // Outputs

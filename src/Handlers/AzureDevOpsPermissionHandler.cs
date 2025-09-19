@@ -18,6 +18,7 @@ namespace DevOpsExtension.Handlers;
 public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsPermission, AzureDevOpsPermissionIdentifiers>
 {
     private const string GraphApiVersion = "7.1-preview.1";
+    private const string ContinuationHeader = "X-MS-ContinuationToken";
 
     /// <inheritdoc />
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
@@ -116,7 +117,7 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
                 }
             }
             // get continuation header
-            if (listResp.Headers.TryGetValues("X-MS-ContinuationToken", out var values))
+            if (listResp.Headers.TryGetValues(ContinuationHeader, out var values))
             {
                 continuation = values is null ? null : System.Linq.Enumerable.FirstOrDefault(values);
                 if (string.IsNullOrEmpty(continuation))
@@ -191,44 +192,25 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
             {
                 foreach (var item in arr.EnumerateArray())
                 {
-                    var desc = GetString(item, "descriptor");
-                    var displayName = GetString(item, "displayName");
-                    var principalName = GetString(item, "principalName");
-                    var domain = GetString(item, "domain");
-
-                    // Only consider project-scoped groups: domain contains Classification/TeamProject
-                    var isProjectDomain = !string.IsNullOrWhiteSpace(domain) &&
-                        domain.Contains("Classification/TeamProject", StringComparison.OrdinalIgnoreCase);
-                    if (!isProjectDomain)
+                    if (!IsProjectScoped(item))
                     {
                         continue;
                     }
 
-                    // collect a few names for diagnostics
+                    var displayName = GetString(item, "displayName");
                     if (existingRolesGroups.Count < 8 && !string.IsNullOrWhiteSpace(displayName))
                     {
                         existingRolesGroups.Add(displayName!);
                     }
 
-                    // Strict match by displayName
-                    if (!string.IsNullOrWhiteSpace(displayName) &&
-                        string.Equals(displayName, targetName, StringComparison.OrdinalIgnoreCase) &&
-                        !string.IsNullOrWhiteSpace(desc))
+                    if (IsMatchingGroup(item, targetName, expectedPrincipal))
                     {
-                        return desc!;
-                    }
-
-                    // Strict match by principalName (project-qualified)
-                    if (!string.IsNullOrWhiteSpace(principalName) &&
-                        string.Equals(principalName, expectedPrincipal, StringComparison.OrdinalIgnoreCase) &&
-                        !string.IsNullOrWhiteSpace(desc))
-                    {
-                        return desc!;
+                        return GetString(item, "descriptor")!;
                     }
                 }
             }
 
-            if (resp.Headers.TryGetValues("X-MS-ContinuationToken", out var values))
+            if (resp.Headers.TryGetValues(ContinuationHeader, out var values))
             {
                 continuation = values is null ? null : System.Linq.Enumerable.FirstOrDefault(values);
                 if (string.IsNullOrEmpty(continuation))
@@ -283,5 +265,30 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
         return element.TryGetProperty(propertyName, out var value)
             ? value.ValueKind == JsonValueKind.Null ? null : value.GetString()
             : null;
+    }
+    private static bool IsProjectScoped(JsonElement group)
+    {
+        var domain = GetString(group, "domain");
+        return !string.IsNullOrWhiteSpace(domain) &&
+               domain.Contains("Classification/TeamProject", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsMatchingGroup(JsonElement group, string targetName, string expectedPrincipal)
+    {
+        var displayName = GetString(group, "displayName");
+        if (!string.IsNullOrWhiteSpace(displayName) &&
+            string.Equals(displayName, targetName, StringComparison.OrdinalIgnoreCase))
+        {
+            return !string.IsNullOrWhiteSpace(GetString(group, "descriptor"));
+        }
+
+        var principalName = GetString(group, "principalName");
+        if (!string.IsNullOrWhiteSpace(principalName) &&
+            string.Equals(principalName, expectedPrincipal, StringComparison.OrdinalIgnoreCase))
+        {
+            return !string.IsNullOrWhiteSpace(GetString(group, "descriptor"));
+        }
+
+        return false;
     }
 }

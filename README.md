@@ -78,7 +78,7 @@ In the `bicepconfig.json` you refer to the ACR:
 
 ## Public ACR
 
-If you want to try it out without effort, then you can use `br:azuredevopsbicep.azurecr.io/extensions/azuredevops:0.1.4` as the ACR reference.
+If you want to try it out without effort, then you can use `br:azuredevopsbicep.azurecr.io/extensions/azuredevops:0.1.39` as the ACR reference.
 
 ## Bicep Usage Example
 

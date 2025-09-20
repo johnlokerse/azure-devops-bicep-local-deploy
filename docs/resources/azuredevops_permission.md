@@ -21,17 +21,17 @@ resource permission 'AzureDevOpsPermission' = {
 
 The following arguments are available:
 
-- `groupObjectId` - (Required) Azure Entra ID (AAD) group object id (GUID)
+- `groupObjectId` - (Required) Azure Entra ID group object id (GUID)
 - `organization` - (Required) Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL
 - `project` - (Required) The Azure DevOps project name
-- `role` - (Required) Project role to assign the group to (Readers or Contributors)
+- `role` - (Required) Project role to assign the group to (e.g., Readers, Contributors, Project Administrators, or any custom role)
 
 ## Attribute reference
 
 In addition to all arguments above, the following attributes are outputted:
 
-- `assigned` - [OUTPUT] Whether the AAD group is currently assigned to the target role in the project
-- `groupDescriptor` - [OUTPUT] Descriptor of the AAD group in Azure DevOps Graph
+- `assigned` - [OUTPUT] Whether the Entra ID group is currently assigned to the target role in the project
+- `groupDescriptor` - [OUTPUT] Descriptor of the Entra ID group in Azure DevOps Graph
 - `projectGroupDescriptor` - [OUTPUT] Descriptor of the target project security group
 
 ## Notes

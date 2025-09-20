@@ -52,17 +52,17 @@ Please note the following important considerations when using the `AzureDevOpsPe
 [ResourceType("AzureDevOpsPermission")]
 public class AzureDevOpsPermission : AzureDevOpsPermissionIdentifiers
 {
-    [TypeProperty("Azure Entra ID (AAD) group object id (GUID)", ObjectTypePropertyFlags.Required)]
+    [TypeProperty("Azure Entra ID group object id (GUID)", ObjectTypePropertyFlags.Required)]
     public required string GroupObjectId { get; set; }
 
-    [TypeProperty("Project role to assign the group to (Readers or Contributors)", ObjectTypePropertyFlags.Required)]
+    [TypeProperty("Project role to assign the group to (e.g., Readers, Contributors, Project Administrators, or any custom role)", ObjectTypePropertyFlags.Required)]
     public required string Role { get; set; }
 
     // Outputs
-    [TypeProperty("[OUTPUT] Whether the AAD group is currently assigned to the target role in the project", ObjectTypePropertyFlags.ReadOnly)]
+    [TypeProperty("[OUTPUT] Whether the Entra ID group is currently assigned to the target role in the project", ObjectTypePropertyFlags.ReadOnly)]
     public bool Assigned { get; set; }
 
-    [TypeProperty("[OUTPUT] Descriptor of the AAD group in Azure DevOps Graph", ObjectTypePropertyFlags.ReadOnly)]
+    [TypeProperty("[OUTPUT] Descriptor of the Entra ID group in Azure DevOps Graph", ObjectTypePropertyFlags.ReadOnly)]
     public string? GroupDescriptor { get; set; }
 
     [TypeProperty("[OUTPUT] Descriptor of the target project security group", ObjectTypePropertyFlags.ReadOnly)]

@@ -21,7 +21,7 @@ param tenantId string
 
 // Make sure the principal has permissions to the subscription or management group
 resource serviceConnection 'AzureDevOpsServiceConnection' = {
-  name: 'mysvc'
+  name: 'my-first-service-connection'
   organization: organization
   project: projectName
   grantAllPipelines: true

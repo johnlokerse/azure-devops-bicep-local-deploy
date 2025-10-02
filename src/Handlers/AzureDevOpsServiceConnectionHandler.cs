@@ -15,7 +15,6 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         if (existing is not null)
         {
             PopulateOutputs(request.Properties, existing);
-            await SetFederatedOutputsAsync(request.Config, request.Properties, cancellationToken);
         }
 
         return GetResponse(request);
@@ -32,7 +31,6 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         }
 
         PopulateOutputs(props, existing);
-        await SetFederatedOutputsAsync(request.Config, props, cancellationToken);
         return GetResponse(request);
     }
 
@@ -48,6 +46,8 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         props.ServiceConnectionId = sc.id;
         props.Url = sc.url;
         props.AuthorizationScheme = sc.scheme;
+        props.Issuer = sc.workloadIdentityFederationIssuer;
+        props.SubjectIdentifier = sc.workloadIdentityFederationSubject;
     }
 
     /// <summary>
@@ -75,13 +75,38 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
             {
                 if (string.Equals(item.GetProperty("name").GetString(), props.Name, StringComparison.OrdinalIgnoreCase))
                 {
+                    string? scheme = null;
+                    string? issuer = null;
+                    string? subject = null;
+                    
+                    if (item.TryGetProperty("authorization", out var auth))
+                    {
+                        if (auth.TryGetProperty("scheme", out var sch))
+                        {
+                            scheme = sch.GetString();
+                        }
+                        if (auth.TryGetProperty("parameters", out var parameters))
+                        {
+                            if (parameters.TryGetProperty("workloadIdentityFederationIssuer", out var issuerProp))
+                            {
+                                issuer = issuerProp.GetString();
+                            }
+                            if (parameters.TryGetProperty("workloadIdentityFederationSubject", out var subjectProp))
+                            {
+                                subject = subjectProp.GetString();
+                            }
+                        }
+                    }
+                    
                     return new
                     {
                         id = item.GetProperty("id").GetString(),
                         name = item.GetProperty("name").GetString(),
                         type = item.TryGetProperty("type", out var t) ? t.GetString() : null,
                         url = item.TryGetProperty("url", out var u) ? u.GetString() : null,
-                        scheme = item.TryGetProperty("authorization", out var auth) && auth.TryGetProperty("scheme", out var sch) ? sch.GetString() : null
+                        scheme = scheme,
+                        workloadIdentityFederationIssuer = issuer,
+                        workloadIdentityFederationSubject = subject
                     };
                 }
             }
@@ -250,46 +275,5 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         return client.SendAsync(req, ct);
     }
 
-    private async Task SetFederatedOutputsAsync(Configuration configuration, AzureDevOpsServiceConnection props, CancellationToken ct)
-    {
-        // Avoid recomputation if already populated
-        if (!string.IsNullOrWhiteSpace(props.Issuer) && !string.IsNullOrWhiteSpace(props.SubjectIdentifier)) return;
 
-        var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
-        using var client = CreateClient(configuration);
-        try
-        {
-            var resp = await client.GetAsync($"{baseUrl}/{org}/_apis/connectiondata?api-version=7.1-preview.1", ct);
-            if (!resp.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException($"Failed to retrieve connection data for organization '{props.Organization}' (status {(int)resp.StatusCode}).");
-            }
-
-            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            if (!json.TryGetProperty("instanceId", out var inst) || inst.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(inst.GetString()))
-            {
-                throw new InvalidOperationException($"Connection data for organization '{props.Organization}' did not contain a valid instanceId.");
-            }
-
-            var orgGuid = inst.GetString()!;
-            props.Issuer = $"https://vstoken.dev.azure.com/{orgGuid}";
-            props.SubjectIdentifier = $"sc://{org}/{props.Project}/{props.Name}";
-            if (string.IsNullOrWhiteSpace(props.Issuer) || string.IsNullOrWhiteSpace(props.SubjectIdentifier))
-            {
-                throw new InvalidOperationException("Failed to compute issuer and subject identifier for service connection.");
-            }
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new InvalidOperationException($"HTTP error while retrieving organization GUID for '{props.Organization}'.", ex);
-        }
-        catch (TaskCanceledException ex)
-        {
-            throw new OperationCanceledException($"Retrieving issuer/subject metadata was canceled or timed out for organization '{props.Organization}'.", ex, ct);
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidOperationException($"Malformed JSON while retrieving organization GUID for '{props.Organization}'.", ex);
-        }
-    }
 }

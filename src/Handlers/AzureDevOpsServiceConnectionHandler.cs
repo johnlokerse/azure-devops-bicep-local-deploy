@@ -171,17 +171,17 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
                 StringContent permissionContent = new StringContent(JsonSerializer.Serialize(permissionBody, JsonOptions), Encoding.UTF8, "application/json");
                 using HttpResponseMessage _ = await PatchPermissionsAsync(client, $"{baseUrl}/{organization}/{Uri.EscapeDataString(props.Project)}/_apis/pipelines/pipelinePermissions/endpoint/{created.Id}?api-version=7.1-preview.1", permissionContent, cancellationToken);
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException httpRequestException)
             {
-                throw new InvalidOperationException($"Failed to set pipeline permissions for service connection '{props.Name}'.", ex);
+                throw new InvalidOperationException($"Failed to set pipeline permissions for service connection '{props.Name}'.", httpRequestException);
             }
-            catch (TaskCanceledException ex)
+            catch (TaskCanceledException taskCanceledException)
             {
-                throw new OperationCanceledException($"Setting pipeline permissions for service connection '{props.Name}' was canceled or timed out.", ex, cancellationToken);
+                throw new OperationCanceledException($"Setting pipeline permissions for service connection '{props.Name}' was canceled or timed out.", taskCanceledException, cancellationToken);
             }
-            catch (JsonException ex)
+            catch (JsonException jsonException)
             {
-                throw new InvalidOperationException($"Malformed JSON encountered while setting pipeline permissions for service connection '{props.Name}'.", ex);
+                throw new InvalidOperationException($"Malformed JSON encountered while setting pipeline permissions for service connection '{props.Name}'.", jsonException);
             }
         }
     }
@@ -279,9 +279,9 @@ public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBas
         };
     }
 
-    private static Task<HttpResponseMessage> PatchPermissionsAsync(HttpClient client, string uri, HttpContent content, CancellationToken ct)
+    private static Task<HttpResponseMessage> PatchPermissionsAsync(HttpClient client, string uri, HttpContent content, CancellationToken cancellationToken)
     {
         HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("PATCH"), uri) { Content = content };
-        return client.SendAsync(request, ct);
+        return client.SendAsync(request, cancellationToken);
     }
 }

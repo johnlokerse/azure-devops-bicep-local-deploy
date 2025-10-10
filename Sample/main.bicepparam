@@ -1,15 +1,25 @@
 using 'main.bicep'
 
-param organization = '<add-your-organization-here>'
-param projectName = 'SampleProjectFromBicep'
+// Azure DevOps project
+param organization = '<string>'
+param projectName = 'SampleProjectCreatedByBicep'
 param projectDescription = 'Created via Bicep local extension quickstart'
 param visibility = 'Private'
 param processName = 'Agile'
 param sourceControl = 'Git'
 
-param repositoryName = 'FirstRepo'
+// Azure Repos repository
+param repositoryName = 'FirstRepoCreatedByBicep'
 
-param artifactName = 'FirstFeed'
+// Azure Artifacts feed
+param artifactName = 'FirstFeedCreatedByBicep'
 
-param entraGroupObjectId = '<add-your-group-object-id-here>' // optional, remove if not needed
+// Entra Group role assignment
+param entraGroupObjectId = '<guid>' // optional, remove if not needed
 param azureDevOpsRole = 'Readers' // optional, remove if not needed
+
+// Service connection
+param clientId = '<guid>' // Application (client) ID of the service principal
+param subscriptionId = '<guid>' // Subscription ID of the Azure subscription
+param subscriptionName = '<string>'
+param tenantId = '<guid'

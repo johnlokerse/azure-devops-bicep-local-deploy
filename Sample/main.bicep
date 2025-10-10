@@ -37,6 +37,18 @@ param entraGroupObjectId string?
 @description('Project role to grant to the Entra group')
 param azureDevOpsRole string?
 
+@description('Client ID of the service principal')
+param clientId string
+
+@description('Subscription ID')
+param subscriptionId string
+
+@description('Subscription name')
+param subscriptionName string
+
+@description('Tenant ID')
+param tenantId string
+
 resource project 'AzureDevOpsProject' = {
   name: projectName
   organization: organization
@@ -65,6 +77,19 @@ resource readerPermission 'AzureDevOpsPermission' = if (!empty(entraGroupObjectI
   role: azureDevOpsRole!
 }
 
+resource serviceConnection 'AzureDevOpsServiceConnection' = {
+  name: 'my-first-service-connection'
+  organization: organization
+  project: project.name
+  grantAllPipelines: true
+  description: 'Service connection for Azure resources created by Bicep'
+  clientId: clientId
+  subscriptionId: subscriptionId
+  subscriptionName: subscriptionName
+  tenantId: tenantId
+}
+
+
 // Outputs
 output projectId string = project.projectId
 output projectState string = project.state
@@ -77,3 +102,6 @@ output repositorySshUrl string = repository.sshUrl
 
 output artifactFeedId string = artifactFeed.feedId
 output artifactFeedUrl string = artifactFeed.url
+
+output serviceConnectionIdentifier string = serviceConnection.subjectIdentifier
+output serviceConnectionIssuer string = serviceConnection.issuer

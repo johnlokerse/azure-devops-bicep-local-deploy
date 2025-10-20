@@ -18,7 +18,8 @@ builder.Services
     .WithResourceHandler<AzureDevOpsRepositoryHandler>()
     .WithResourceHandler<AzureDevOpsArtifactFeedHandler>()
     .WithResourceHandler<AzureDevOpsServiceConnectionHandler>()
-    .WithResourceHandler<AzureDevOpsPermissionHandler>();
+    .WithResourceHandler<AzureDevOpsPermissionHandler>()
+    .WithResourceHandler<AzureDevOpsExtensionHandler>();
 
 var app = builder.Build();
 

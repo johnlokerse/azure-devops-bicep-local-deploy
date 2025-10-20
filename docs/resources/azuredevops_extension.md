@@ -12,7 +12,7 @@ This example shows how to install a specific version of an extension into your A
 resource extension 'AzureDevOpsExtension' = {
   organization: 'myorg'
   publisherName: 'ms'
-  extensionName: 'vss-analytics'
+  extensionName: 'vss-code-search'
   version: '1.0.0'
 }
 ```
@@ -25,7 +25,7 @@ This example shows how to install multiple extensions using a loop.
 var extensions = [
   {
     publisher: 'ms'
-    name: 'vss-analytics'
+    name: 'vss-code-search'
     version: '1.0.0'
   }
   {
@@ -63,7 +63,7 @@ output publisherId string = extension.publisherId
 
 The following arguments are available:
 
-- `extensionName` - (Required) Extension name (e.g. 'vss-analytics')
+- `extensionName` - (Required) Extension name (e.g. 'vss-code-search')
 - `organization` - (Required) Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL
 - `publisherName` - (Required) Publisher name (e.g. 'ms' or 'fabrikam')
 - `version` - (Required) Version of the extension to install (e.g. '1.0.0')

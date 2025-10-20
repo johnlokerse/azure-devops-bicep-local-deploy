@@ -3,8 +3,8 @@
     "localDeploy": true
   },
   "extensions": {
-    "azuredevops": "br:azuredevopsbicep.azurecr.io/extensions/azuredevops:0.1.39" // ACR
-    // "azuredevops": "../src/bin/azure-devops-extension" // local
+    // "azuredevops": "br:azuredevopsbicep.azurecr.io/extensions/azuredevops:0.1.39" // ACR
+    "azuredevops": "../src/bin/azure-devops-extension" // local
   },
   "implicitExtensions": []
 }

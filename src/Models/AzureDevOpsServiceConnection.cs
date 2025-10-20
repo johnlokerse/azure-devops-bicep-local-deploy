@@ -153,18 +153,18 @@ public class AzureDevOpsServiceConnection : AzureDevOpsServiceConnectionIdentifi
     public bool GrantAllPipelines { get; set; }
 
     // Outputs
-    [TypeProperty("[OUTPUT] Authorization scheme actually used")]
+    [TypeProperty("[OUTPUT] Authorization scheme actually used", ObjectTypePropertyFlags.ReadOnly)]
     public string? AuthorizationScheme { get; set; }
 
-    [TypeProperty("[OUTPUT]Service connection id (GUID)")]
+    [TypeProperty("[OUTPUT]Service connection id (GUID)", ObjectTypePropertyFlags.ReadOnly)]
     public string? ServiceConnectionId { get; set; }
 
-    [TypeProperty("[OUTPUT] Service connection URL")]
+    [TypeProperty("[OUTPUT] Service connection URL", ObjectTypePropertyFlags.ReadOnly)]
     public string? Url { get; set; }
 
-    [TypeProperty("[OUTPUT] Workload Identity Federation Issuer")]
+    [TypeProperty("[OUTPUT] Workload Identity Federation Issuer", ObjectTypePropertyFlags.ReadOnly)]
     public string? Issuer { get; set; }
 
-    [TypeProperty("[OUTPUT] Workload Identity Federation Subject Identifier")]
+    [TypeProperty("[OUTPUT] Workload Identity Federation Subject Identifier", ObjectTypePropertyFlags.ReadOnly)]
     public string? SubjectIdentifier { get; set; }
 }

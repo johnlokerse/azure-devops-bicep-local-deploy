@@ -80,9 +80,9 @@ public class AzureDevOpsExtensionHandler : AzureDevOpsResourceHandlerBase<AzureD
             {
                 extensionId = json.GetProperty("extensionId").GetString()!,
                 publisherId = json.GetProperty("publisherId").GetString()!,
-                version = json.TryGetProperty("version", out var v) ? v.GetString() : null,
-                extensionName = json.TryGetProperty("extensionName", out var en) ? en.GetString() : null,
-                publisherName = json.TryGetProperty("publisherName", out var pn) ? pn.GetString() : null,
+                version = json.TryGetProperty("version", out var version) ? version.GetString() : null,
+                extensionName = json.TryGetProperty("extensionName", out var extensionName) ? extensionName.GetString() : null,
+                publisherName = json.TryGetProperty("publisherName", out var publisherName) ? publisherName.GetString() : null,
             };
         }
         catch
@@ -101,12 +101,12 @@ public class AzureDevOpsExtensionHandler : AzureDevOpsResourceHandlerBase<AzureD
 
         // POST request with empty body
         var content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
-        var resp = await client.PostAsync(apiUrl, content, cancellationToken);
+        var response = await client.PostAsync(apiUrl, content, cancellationToken);
 
-        if (!resp.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            var errorContent = await resp.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException($"Failed to install extension '{props.PublisherName}.{props.ExtensionName}' version '{props.Version}'. Status: {resp.StatusCode}, Response: {errorContent}");
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Failed to install extension '{props.PublisherName}.{props.ExtensionName}' version '{props.Version}'. Status: {response.StatusCode}, Response: {errorContent}");
         }
     }
 }

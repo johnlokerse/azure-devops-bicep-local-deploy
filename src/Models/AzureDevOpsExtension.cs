@@ -12,7 +12,7 @@ public class AzureDevOpsExtensionIdentifiers
     [TypeProperty("Publisher name (e.g. 'ms' or 'fabrikam')", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
     public required string PublisherName { get; set; }
 
-    [TypeProperty("Extension name (e.g. 'vss-analytics')", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
+    [TypeProperty("Extension name (e.g. 'vss-code-search')", ObjectTypePropertyFlags.Identifier | ObjectTypePropertyFlags.Required)]
     public required string ExtensionName { get; set; }
 }
 
@@ -23,8 +23,8 @@ public class AzureDevOpsExtensionIdentifiers
     @"resource extension 'AzureDevOpsExtension' = {
   organization: 'myorg'
   publisherName: 'ms'
-  extensionName: 'vss-analytics'
-  version: '1.0.0'
+  extensionName: 'vss-code-search'
+  version: '20.263.0.848933653'
 }
 "
 )]
@@ -34,13 +34,13 @@ public class AzureDevOpsExtensionIdentifiers
     @"var extensions = [
   {
     publisher: 'ms'
-    name: 'vss-analytics'
-    version: '1.0.0'
+    name: 'vss-code-search'
+    version: '20.263.0.848933653'
   }
   {
-    publisher: 'ms-devlabs'
+    publisher: 'SonarSource'
     name: 'sonarqube'
-    version: '5.0.0'
+    version: '7.4.1'
   }
 ]
 
@@ -57,9 +57,9 @@ resource marketplaceExtensions 'AzureDevOpsExtension' = [for ext in extensions: 
     "This example shows how to install an extension and reference its outputs.",
     @"resource extension 'AzureDevOpsExtension' = {
   organization: 'myorg'
-  publisherName: 'ms-devlabs'
-  extensionName: 'custom-terraform-tasks'
-  version: '1.0.0'
+  publisherName: 'SonarSource'
+  extensionName: 'sonarqube'
+  version: '7.4.1'
 }
 
 output extensionId string = extension.extensionId

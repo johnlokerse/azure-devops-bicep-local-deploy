@@ -91,15 +91,15 @@ public class AzureDevOpsRepository : AzureDevOpsRepositoryIdentifiers
     public string? DefaultBranch { get; set; }
 
     // Outputs
-    [TypeProperty("[OUTPUT] Repository id (GUID)")]
+    [TypeProperty("[OUTPUT] Repository id (GUID)", ObjectTypePropertyFlags.ReadOnly)]
     public string? RepositoryId { get; set; }
 
-    [TypeProperty("[OUTPUT] Repository web URL")]
+    [TypeProperty("[OUTPUT] Repository web URL", ObjectTypePropertyFlags.ReadOnly)]
     public string? WebUrl { get; set; }
 
-    [TypeProperty("[OUTPUT] HTTPS clone URL")]
+    [TypeProperty("[OUTPUT] HTTPS clone URL", ObjectTypePropertyFlags.ReadOnly)]
     public string? RemoteUrl { get; set; }
 
-    [TypeProperty("[OUTPUT] SSH clone URL")]
+    [TypeProperty("[OUTPUT] SSH clone URL", ObjectTypePropertyFlags.ReadOnly)]
     public string? SshUrl { get; set; }
 }

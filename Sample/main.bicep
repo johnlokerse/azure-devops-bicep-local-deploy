@@ -49,6 +49,9 @@ param subscriptionName string
 @description('Tenant ID')
 param tenantId string
 
+@description('List of Azure DevOps extensions to install')
+param extensions extensionType[]
+
 resource project 'AzureDevOpsProject' = {
   name: projectName
   organization: organization
@@ -57,6 +60,13 @@ resource project 'AzureDevOpsProject' = {
   processName: processName
   sourceControlType: sourceControl
 }
+
+resource extension 'AzureDevOpsExtension' = [for ext in extensions: {
+  organization: organization
+  publisherName: ext.publisherName
+  extensionName: ext.extensionName
+  version: ext.version
+}]
 
 resource repository 'AzureDevOpsRepository' = {
   name: repositoryName
@@ -105,3 +115,9 @@ output artifactFeedUrl string = artifactFeed.url
 
 output serviceConnectionIdentifier string = serviceConnection.subjectIdentifier
 output serviceConnectionIssuer string = serviceConnection.issuer
+
+type extensionType = {
+  publisherName: string
+  extensionName: string
+  version: string
+}

@@ -104,12 +104,12 @@ public class AzureDevOpsProject : AzureDevOpsProjectIdentifiers
     public string? SourceControlType { get; set; } = "Git";
 
     // Outputs
-    [TypeProperty("[OUTPUT] Project id (GUID)")]
+    [TypeProperty("[OUTPUT] Project id (GUID)", ObjectTypePropertyFlags.ReadOnly)]
     public string? ProjectId { get; set; }
 
-    [TypeProperty("[OUTPUT] Project state")]
+    [TypeProperty("[OUTPUT] Project state", ObjectTypePropertyFlags.ReadOnly)]
     public string? State { get; set; }
 
-    [TypeProperty("[OUTPUT] Project web URL")]
+    [TypeProperty("[OUTPUT] Project web URL", ObjectTypePropertyFlags.ReadOnly)]
     public string? Url { get; set; }
 }

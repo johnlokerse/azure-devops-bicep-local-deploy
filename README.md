@@ -16,6 +16,7 @@ Experimental / sample only. Limited functionality for now:
 - **Create** Azure DevOps Artifact Feeds
 - **Create** Federated Service Connections
 - **Assign** Entra ID groups to Azure DevOps Project Permissions
+- **Install** Azure DevOps Marketplace Extensions
 
 See the [Sample](./Sample/main.bicep) folder for an example Bicep template.
 

@@ -22,4 +22,13 @@ param azureDevOpsRole = 'Readers' // optional, remove if not needed
 param clientId = '<guid>' // Application (client) ID of the service principal
 param subscriptionId = '<guid>' // Subscription ID of the Azure subscription
 param subscriptionName = '<string>'
-param tenantId = '<guid'
+param tenantId = '<guid'>
+
+// Azure DevOps extensions to install
+param extensions = [
+  {
+    publisherName: 'ms'
+    extensionName: 'vss-code-search'
+    version: '20.263.0.848933653'
+  }
+]

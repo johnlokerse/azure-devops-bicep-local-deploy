@@ -57,11 +57,16 @@ The following arguments are available:
 - `organization` - (Required) Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL
 - `description` - (Optional) Project description
 - `processName` - (Optional) Process name to use (e.g. Agile, Scrum, Basic, CMMI)
-- `projectId` - (Optional) [OUTPUT] Project id (GUID)
 - `sourceControlType` - (Optional) Source control type (Git or Tfvc)
-- `state` - (Optional) [OUTPUT] Project state
-- `url` - (Optional) [OUTPUT] Project web URL
 - `visibility` - (Optional) Project visibility (Private/Public) (Can be `Private`, or `Public`)
+
+## Attribute reference
+
+In addition to all arguments above, the following attributes are outputted:
+
+- `projectId` - [OUTPUT] Project id (GUID)
+- `state` - [OUTPUT] Project state
+- `url` - [OUTPUT] Project web URL
 
 ## Notes
 

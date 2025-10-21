@@ -57,10 +57,15 @@ The following arguments are available:
 - `organization` - (Required) Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL
 - `project` - (Required) Project name that will contain the repository
 - `defaultBranch` - (Optional) Default branch name to set after creation (e.g. 'refs/heads/main'). If omitted, Azure DevOps sets one after first push.
-- `remoteUrl` - (Optional) [OUTPUT] HTTPS clone URL
-- `repositoryId` - (Optional) [OUTPUT] Repository id (GUID)
-- `sshUrl` - (Optional) [OUTPUT] SSH clone URL
-- `webUrl` - (Optional) [OUTPUT] Repository web URL
+
+## Attribute reference
+
+In addition to all arguments above, the following attributes are outputted:
+
+- `remoteUrl` - [OUTPUT] HTTPS clone URL
+- `repositoryId` - [OUTPUT] Repository id (GUID)
+- `sshUrl` - [OUTPUT] SSH clone URL
+- `webUrl` - [OUTPUT] Repository web URL
 
 ## Notes
 

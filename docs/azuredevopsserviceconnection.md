@@ -88,18 +88,23 @@ The following arguments are available:
 - `organization` - (Required) Azure DevOps organization name (e.g. 'myorg') or full https://dev.azure.com/{org} URL
 - `project` - (Required) Project name that will contain the service connection
 - `tenantId` - (Required) Azure AD tenant id (directory id) containing the user-assigned managed identity.
-- `authorizationScheme` - (Optional) [OUTPUT] Authorization scheme actually used
 - `description` - (Optional) Description for the service connection
 - `grantAllPipelines` - (Optional) Grant access permission to all pipelines (authorizes all pipelines after creation)
-- `issuer` - (Optional) [OUTPUT] Workload Identity Federation Issuer
 - `managementGroupId` - (Optional) Management group id. Required when scopeLevel = ManagementGroup.
 - `managementGroupName` - (Optional) Management group name. Required when scopeLevel = ManagementGroup.
 - `scopeLevel` - (Optional) Scope level: Subscription (default) or ManagementGroup. (Can be `Subscription`, or `ManagementGroup`)
-- `serviceConnectionId` - (Optional) [OUTPUT]Service connection id (GUID)
-- `subjectIdentifier` - (Optional) [OUTPUT] Workload Identity Federation Subject Identifier
 - `subscriptionId` - (Optional) Azure subscription id (GUID). Required when scopeLevel = Subscription.
 - `subscriptionName` - (Optional) Azure subscription display name. Required when scopeLevel = Subscription.
-- `url` - (Optional) [OUTPUT] Service connection URL
+
+## Attribute reference
+
+In addition to all arguments above, the following attributes are outputted:
+
+- `authorizationScheme` - [OUTPUT] Authorization scheme actually used
+- `issuer` - [OUTPUT] Workload Identity Federation Issuer
+- `serviceConnectionId` - [OUTPUT]Service connection id (GUID)
+- `subjectIdentifier` - [OUTPUT] Workload Identity Federation Subject Identifier
+- `url` - [OUTPUT] Service connection URL
 
 ## Notes
 

@@ -1,12 +1,8 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Bicep.Local.Extension.Host.Handlers;
-using DevOpsExtension.Models;
-using System.Net;
 
-namespace DevOpsExtension.Handlers;
+namespace DevOpsExtension.ArtifactFeed;
 
 public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsArtifactFeed, AzureDevOpsArtifactFeedIdentifiers>
 {

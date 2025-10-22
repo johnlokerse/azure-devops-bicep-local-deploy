@@ -1,8 +1,13 @@
 using Microsoft.AspNetCore.Builder;
 using Bicep.Local.Extension.Host.Extensions;
+using DevOpsExtension;
+using DevOpsExtension.ArtifactFeed;
+using DevOpsExtension.Extension;
 using Microsoft.Extensions.DependencyInjection;
-using DevOpsExtension.Handlers;
-using DevOpsExtension.Models;
+using DevOpsExtension.Permission;
+using DevOpsExtension.Project;
+using DevOpsExtension.Repository;
+using DevOpsExtension.ServiceConnection;
 
 var builder = WebApplication.CreateBuilder();
 

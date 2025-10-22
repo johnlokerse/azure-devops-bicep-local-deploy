@@ -1,8 +1,6 @@
-using System.Text.Json.Serialization;
 using Azure.Bicep.Types.Concrete;
-using Bicep.Local.Extension.Types.Attributes;
 
-namespace DevOpsExtension.Models;
+namespace DevOpsExtension.Extension;
 
 public class AzureDevOpsExtensionIdentifiers
 {

@@ -1,11 +1,8 @@
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Net.Http.Json;
-using System.Net.Http;
-using Bicep.Local.Extension.Host.Handlers;
-using DevOpsExtension.Models;
 
-namespace DevOpsExtension.Handlers;
+namespace DevOpsExtension.Permission;
 
 /// <summary>
 /// Assigns a Microsoft Entra ID group to a project security group in Azure DevOps.

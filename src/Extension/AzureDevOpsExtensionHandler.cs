@@ -1,10 +1,8 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Bicep.Local.Extension.Host.Handlers;
-using DevOpsExtension.Models;
 
-namespace DevOpsExtension.Handlers;
+namespace DevOpsExtension.Extension;
 
 public class AzureDevOpsExtensionHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsExtension, AzureDevOpsExtensionIdentifiers>
 {

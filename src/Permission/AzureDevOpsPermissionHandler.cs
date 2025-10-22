@@ -112,13 +112,9 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
                 }
             }
             // get continuation header
-            if (listResp.Headers.TryGetValues(ContinuationHeader, out var values))
+            if (listResp.Headers.TryGetValues(ContinuationHeader, out var values) || values is not null)
             {
-                continuation = values is null ? null : System.Linq.Enumerable.FirstOrDefault(values);
-                if (string.IsNullOrEmpty(continuation))
-                {
-                    break;
-                }
+                continuation = values.FirstOrDefault();
             }
             else
             {
@@ -195,7 +191,7 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
                     var displayName = GetString(item, "displayName");
                     if (existingRolesGroups.Count < 8 && !string.IsNullOrWhiteSpace(displayName))
                     {
-                        existingRolesGroups.Add(displayName!);
+                        existingRolesGroups.Add(displayName);
                     }
 
                     if (IsMatchingGroup(item, targetName, expectedPrincipal))
@@ -205,13 +201,9 @@ public class AzureDevOpsPermissionHandler : AzureDevOpsResourceHandlerBase<Azure
                 }
             }
 
-            if (resp.Headers.TryGetValues(ContinuationHeader, out var values))
+            if (resp.Headers.TryGetValues(ContinuationHeader, out var values) || values is not null)
             {
-                continuation = values is null ? null : System.Linq.Enumerable.FirstOrDefault(values);
-                if (string.IsNullOrEmpty(continuation))
-                {
-                    break;
-                }
+                continuation = values.FirstOrDefault();
             }
             else
             {

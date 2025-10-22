@@ -110,7 +110,7 @@ public class AzureDevOpsProjectHandler : AzureDevOpsResourceHandlerBase<AzureDev
         using var client = CreateClient(configuration);
         var body = new { description = props.Description };
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
-        var resp = await PatchAsync(client, $"{baseUrl}/{org}/_apis/projects/{projectId}?api-version=7.1-preview.4", content, ct);
+        await PatchAsync(client, $"{baseUrl}/{org}/_apis/projects/{projectId}?api-version=7.1-preview.4", content, ct);
     }
 
     private async Task<string> ResolveProcessTemplateIdAsync(HttpClient client, string org, string baseUrl, string processName, CancellationToken ct)

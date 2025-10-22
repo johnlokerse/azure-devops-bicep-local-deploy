@@ -1,12 +1,9 @@
-using System.Net.Http.Headers;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Bicep.Local.Extension.Host.Handlers;
-using DevOpsExtension.Models;
-using System.Net;
 
-namespace DevOpsExtension.Handlers;
+namespace DevOpsExtension.Repository;
 
 public class AzureDevOpsRepositoryHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsRepository, AzureDevOpsRepositoryIdentifiers>
 {

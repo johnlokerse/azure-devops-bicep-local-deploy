@@ -39,8 +39,8 @@ your branch. Then, you can open a pull request on this repository.
 
 To add a new resource:
 
-1. Create a new directory or add a new handler in the `Handlers` directory
-2. Implement the model in the `Models` directory
+1. Create a new directory `FeatureX` directory
+2. Implement the handler and model
 3. Test your changes locally by running `bicep local-deploy` or use `grpcurl`
 4. Open a PR for review
 

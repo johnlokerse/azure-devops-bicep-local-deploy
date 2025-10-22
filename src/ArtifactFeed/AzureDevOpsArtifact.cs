@@ -1,8 +1,6 @@
-using System.Text.Json.Serialization;
 using Azure.Bicep.Types.Concrete;
-using Bicep.Local.Extension.Types.Attributes;
 
-namespace DevOpsExtension.Models;
+namespace DevOpsExtension.ArtifactFeed;
 
 [BicepDocHeading("AzureDevOpsArtifactFeed", "Represents an Azure DevOps artifact feed for package management and distribution.")]
 [BicepDocExample(

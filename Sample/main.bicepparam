@@ -24,6 +24,25 @@ param subscriptionId = '<guid>' // Subscription ID of the Azure subscription
 param subscriptionName = '<string>'
 param tenantId = '<guid'>
 
+// Azure DevOps work items
+param workItems = [
+  {
+    id: 1
+    title: 'Work Item 1'
+    type: 'User Story'
+  }
+  {
+    id: 2
+    title: 'Work Item 2'
+    type: 'User Story'
+  }
+  {
+    id: 3
+    title: 'Work Item 3'
+    type: 'Bug'
+  }
+]
+
 // Azure DevOps extensions to install
 param extensions = [
   {

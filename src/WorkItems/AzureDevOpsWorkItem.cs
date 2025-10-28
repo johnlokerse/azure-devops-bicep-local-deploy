@@ -35,4 +35,7 @@ public class AzureDevOpsWorkItem : AzureDevOpsWorkItemIdentifiers
     
     [TypeProperty("Work item type")]
     public required string Type { get; set; }
+    
+    [TypeProperty("Work item description")]
+    public string? Description { get; set; }
 }

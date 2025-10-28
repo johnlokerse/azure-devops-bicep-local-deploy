@@ -30,16 +30,18 @@ param workItems = [
     id: 1
     title: 'Work Item 1'
     type: 'User Story'
+    description: 'This is the description for Work Item 1'
   }
   {
     id: 2
     title: 'Work Item 2'
     type: 'User Story'
   }
-  {
+  { 
     id: 3
     title: 'Work Item 3'
     type: 'Bug'
+    description: 'This is the description for Work Item 3'
   }
 ]
 

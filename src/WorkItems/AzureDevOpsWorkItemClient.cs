@@ -42,11 +42,12 @@ public class AzureDevOpsWorkItemClient(HttpClient client)
     }
 
     // Reference: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/create?view=azure-devops-rest-7.1&tabs=HTTP
-    public async Task CreateAsync(int internalId, string title, string type, CancellationToken cancellationToken)
+    public async Task CreateAsync(int internalId, string title, string type, string? description, CancellationToken cancellationToken)
     {
         AzureWorkItemModificationRequest[] patchDocument =
         [
             new("add", "/fields/System.Title", title),
+            new("add", GetDescriptionFieldBasedOnType(type), description ?? string.Empty),
             new("add", "/fields/System.Tags", internalId > 0 ? $"{InternalIdKey}={internalId}" : "")
         ];
 
@@ -71,12 +72,22 @@ public class AzureDevOpsWorkItemClient(HttpClient client)
         }
     }
 
+    private static string GetDescriptionFieldBasedOnType(string type)
+    {
+        return type switch
+        {
+            "Bug" => "/fields/Microsoft.VSTS.TCM.ReproSteps",
+            _ => "/fields/System.Description"
+        };
+    }
+
     // Reference: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-rest-7.1&tabs=HTTP
-    public async Task UpdateAsync(int id, string title, CancellationToken cancellationToken)
+    public async Task UpdateAsync(int id, string title, string type, string? description, CancellationToken cancellationToken)
     {
         AzureWorkItemModificationRequest[] patchDocument =
         [
-            new("replace", "/fields/System.Title", title)
+            new("replace", "/fields/System.Title", title),
+            new("replace", GetDescriptionFieldBasedOnType(type), description ?? string.Empty),
         ];
 
         var serialize = JsonSerializer.Serialize(patchDocument);

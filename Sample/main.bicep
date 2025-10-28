@@ -88,6 +88,7 @@ resource workItemList 'AzureDevOpsWorkItem' = [for workItem in workItems: {
   organization: organization  
   id: workItem.id  
   title: workItem.title
+  description: workItem.?description
   type: workItem.type
 }]
 
@@ -137,5 +138,6 @@ type extensionType = {
 type workItemType = {
   id: int
   title: string
+  description: string?
   type: string
 }

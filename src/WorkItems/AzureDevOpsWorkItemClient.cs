@@ -16,6 +16,7 @@ public class AzureDevOpsWorkItemClient(HttpClient client)
         return new AzureDevOpsWorkItemClient(client);
     }
 
+    // Reference: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/wiql/query-by-wiql?view=azure-devops-rest-7.1&tabs=HTTP
     public async Task<int?> FindByAsync(int internalId, CancellationToken cancellationToken)
     {
         var wiql = new
@@ -33,13 +34,14 @@ public class AzureDevOpsWorkItemClient(HttpClient client)
 
         if (!response.IsSuccessStatusCode) return null;
 
-        var workItems = await response.Content.ReadFromJsonAsync<AzureDevOpsWorkItemsSearchResponse>();
+        var workItems = await response.Content.ReadFromJsonAsync<AzureDevOpsWorkItemsSearchResponse>(cancellationToken);
 
         if (workItems?.WorkItems.Length > 0) return workItems.WorkItems[0].Id;
 
         return null;
     }
 
+    // Reference: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/create?view=azure-devops-rest-7.1&tabs=HTTP
     public async Task CreateAsync(int internalId, string title, string type, CancellationToken cancellationToken)
     {
         AzureWorkItemModificationRequest[] patchDocument =
@@ -69,6 +71,7 @@ public class AzureDevOpsWorkItemClient(HttpClient client)
         }
     }
 
+    // Reference: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-rest-7.1&tabs=HTTP
     public async Task UpdateAsync(int id, string title, CancellationToken cancellationToken)
     {
         AzureWorkItemModificationRequest[] patchDocument =

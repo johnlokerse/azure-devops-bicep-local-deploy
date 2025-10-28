@@ -43,6 +43,7 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
 
         if (existing is null)
         {
+            Console.WriteLine($"Creating feed '{props.Name}'.");
             await CreateFeedAsync(request.Config, props, cancellationToken);
             existing = await GetFeedByIdentifiersAsync(request.Config, identifiers, cancellationToken) ?? throw new InvalidOperationException("Feed creation did not return feed.");
         }
@@ -68,37 +69,6 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
         Name = properties.Name,
         Project = properties.Project,
     };
-
-    protected override async Task<ResourceResponse> Get(ReferenceRequest request, CancellationToken cancellationToken)
-    {
-        var existing = await GetFeedByIdentifiersAsync(request.Config, request.Identifiers, cancellationToken);
-
-        // If the resource doesn't exist, return null for properties (resource not found)
-        if (existing is null)
-        {
-            return GetResponse(request, null);
-        }
-
-        // Resource exists, return it with safely accessed properties
-        var existingProperties = new AzureDevOpsArtifactFeed
-        {
-            Organization = request.Identifiers.Organization,
-            Name = request.Identifiers.Name,
-            Project = request.Identifiers.Project,
-            FeedId = existing.id,
-            Url = existing.url,
-            Description = existing.description,
-            HideDeletedPackageVersions = existing.hideDeletedPackageVersions,
-            UpstreamEnabled = existing.upstreamEnabled,
-            ProjectReference = existing.project is null ? null : new AzureDevOpsArtifactFeedProjectReference
-            {
-                Id = existing.project.id,
-                Name = existing.project.name
-            }
-        };
-
-        return GetResponse(request, existingProperties);
-    }
 
     private async Task<dynamic?> GetFeedByIdentifiersAsync(Configuration configuration, AzureDevOpsArtifactFeedIdentifiers identifiers, CancellationToken ct)
     {

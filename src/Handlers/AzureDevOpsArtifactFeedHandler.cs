@@ -11,10 +11,13 @@ namespace DevOpsExtension.Handlers;
 public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsArtifactFeed, AzureDevOpsArtifactFeedIdentifiers>
 {
     private const string FeedsApiVersion = "7.2-preview.1";
-    
+
     protected override async Task<ResourceResponse> Preview(ResourceRequest request, CancellationToken cancellationToken)
     {
-        var existing = await GetFeedAsync(request.Config, request.Properties, cancellationToken);
+        // Use GetFeedByIdentifiersAsync to get full feed details including description, flags, etc.
+        var identifiers = GetIdentifiers(request.Properties);
+        var existing = await GetFeedByIdentifiersAsync(request.Config, identifiers, cancellationToken);
+
         if (existing is not null)
         {
             request.Properties.FeedId = existing.id;
@@ -34,14 +37,18 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
     protected override async Task<ResourceResponse> CreateOrUpdate(ResourceRequest request, CancellationToken cancellationToken)
     {
         var props = request.Properties;
-        var existing = await GetFeedAsync(request.Config, props, cancellationToken);
-        
+
+        var identifiers = GetIdentifiers(props);
+        var existing = await GetFeedByIdentifiersAsync(request.Config, identifiers, cancellationToken);
+
         if (existing is null)
         {
+            Console.WriteLine($"Creating feed '{props.Name}'.");
             await CreateFeedAsync(request.Config, props, cancellationToken);
-            existing = await GetFeedAsync(request.Config, props, cancellationToken) ?? throw new InvalidOperationException("Feed creation did not return feed.");
+            existing = await GetFeedByIdentifiersAsync(request.Config, identifiers, cancellationToken) ?? throw new InvalidOperationException("Feed creation did not return feed.");
         }
 
+        // Populate all output properties
         props.FeedId = existing.id;
         props.Url = existing.url;
         if (existing.project is not null)
@@ -63,6 +70,53 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
         Project = properties.Project,
     };
 
+    private async Task<dynamic?> GetFeedByIdentifiersAsync(Configuration configuration, AzureDevOpsArtifactFeedIdentifiers identifiers, CancellationToken ct)
+    {
+        try
+        {
+            var (org, baseUrl) = GetOrgAndFeedsBaseUrl(identifiers.Organization);
+            using var client = CreateClient(configuration);
+
+            string apiUrl;
+            if (!string.IsNullOrWhiteSpace(identifiers.Project))
+            {
+                // Project-scoped feed
+                apiUrl = $"{baseUrl}/{org}/{Uri.EscapeDataString(identifiers.Project)}/_apis/packaging/feeds/{Uri.EscapeDataString(identifiers.Name)}?api-version={FeedsApiVersion}";
+            }
+            else
+            {
+                // Organization-scoped feed
+                apiUrl = $"{baseUrl}/{org}/_apis/packaging/feeds/{Uri.EscapeDataString(identifiers.Name)}?api-version={FeedsApiVersion}";
+            }
+
+            var resp = await client.GetAsync(apiUrl, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            return new
+            {
+                id = json.GetProperty("id").GetString()!,
+                name = json.GetProperty("name").GetString()!,
+                url = json.TryGetProperty("url", out var url) ? url.GetString() : null,
+                description = json.TryGetProperty("description", out var description) ? description.GetString() : null,
+                hideDeletedPackageVersions = json.TryGetProperty("hideDeletedPackageVersions", out var hideDeletedPackageVersions) ? hideDeletedPackageVersions.GetBoolean() : true,
+                upstreamEnabled = json.TryGetProperty("upstreamEnabled", out var upstreamEnabled) ? upstreamEnabled.GetBoolean() : true,
+                project = json.TryGetProperty("project", out var project) && project.ValueKind != JsonValueKind.Null ? new
+                {
+                    id = project.GetProperty("id").GetString()!,
+                    name = project.TryGetProperty("name", out var pName) ? pName.GetString() : null,
+                } : null,
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static (string org, string baseUrl) GetOrgAndFeedsBaseUrl(string organization)
     {
         if (organization.StartsWith("http", StringComparison.OrdinalIgnoreCase))
@@ -72,50 +126,6 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
             return (org, $"{uri.Scheme}://feeds.{uri.Host}");
         }
         return (organization, "https://feeds.dev.azure.com");
-    }
-
-    private async Task<dynamic?> GetFeedAsync(Configuration configuration, AzureDevOpsArtifactFeed props, CancellationToken ct)
-    {
-        try
-        {
-            var (org, baseUrl) = GetOrgAndFeedsBaseUrl(props.Organization);
-            using var client = CreateClient(configuration);
-            
-            string apiUrl;
-            if (!string.IsNullOrWhiteSpace(props.Project))
-            {
-                // Project-scoped feed
-                apiUrl = $"{baseUrl}/{org}/{Uri.EscapeDataString(props.Project)}/_apis/packaging/feeds/{Uri.EscapeDataString(props.Name)}?api-version={FeedsApiVersion}";
-            }
-            else
-            {
-                // Organization-scoped feed
-                apiUrl = $"{baseUrl}/{org}/_apis/packaging/feeds/{Uri.EscapeDataString(props.Name)}?api-version={FeedsApiVersion}";
-            }
-
-            var resp = await client.GetAsync(apiUrl, ct);
-            if (!resp.IsSuccessStatusCode)
-            {
-                return null;
-            }
-            
-            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            return new
-            {
-                id = json.GetProperty("id").GetString()!,
-                name = json.GetProperty("name").GetString()!,
-                url = json.TryGetProperty("url", out var u) ? u.GetString() : null,
-                project = json.TryGetProperty("project", out var p) && p.ValueKind != JsonValueKind.Null ? new
-                {
-                    id = p.GetProperty("id").GetString()!,
-                    name = p.TryGetProperty("name", out var pName) ? pName.GetString() : null,
-                } : null,
-            };
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private async Task CreateFeedAsync(Configuration configuration, AzureDevOpsArtifactFeed props, CancellationToken ct)
@@ -158,7 +168,7 @@ public class AzureDevOpsArtifactFeedHandler : AzureDevOpsResourceHandlerBase<Azu
 
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
         var resp = await client.PostAsync(apiUrl, content, ct);
-        
+
         if (!resp.IsSuccessStatusCode)
         {
             var errorContent = await resp.Content.ReadAsStringAsync(ct);

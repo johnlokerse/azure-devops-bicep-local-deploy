@@ -53,4 +53,5 @@ jobs:
       - name: Publish Extension
         shell: pwsh
         run: |
+          $env:BICEP_TRACING_ENABLED = "true"
           ./Infra/Scripts/Publish-Extension.ps1 -Target azure-devops-extension

@@ -19,7 +19,7 @@ You are contributing to an experimental Azure Bicep **local-deploy** extension t
 - Project: `AzureDevOpsProjectHandler`
   - Creates project, polls `operations/{id}` until `succeeded`, then polls project until `state == wellFormed` before proceeding. Updates description via PATCH when changed.
 - Repository: `AzureDevOpsRepositoryHandler`
-  - Validates project exists, then creates repo under `/{org}/{project}/_apis/git/repositories`. Retries transient provisioning gaps (e.g., `DataspaceNotFoundException`) with exponential backoff.
+  - Validates project exists, then creates repo under `/{org}/{project}/_apis/git/repositories`.
 - Artifact Feed: `AzureDevOpsArtifactFeedHandler`
   - Uses `feeds.dev.azure.com` endpoints; supports org- or project-scoped feeds; optional upstream sources; looks up project id when project is specified.
   - **Implements Get()** for `@onlyIfNotExists()` support — returns properties with identifiers but null outputs when feed doesn't exist.

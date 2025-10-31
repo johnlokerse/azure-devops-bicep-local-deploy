@@ -44,8 +44,8 @@ You are contributing to an experimental Azure Bicep **local-deploy** extension t
 ## New resource types (pattern)
 
 When adding a new Azure DevOps concept (e.g., boards area path, pipeline permissions):
-1) Create a new directory `FeatureX` directory
-2) Create the `AzureDevOps<Thing>.cs` and `AzureDevOps<Thing>Handler.cs`
+1) Create a new `FeatureX` directory
+2) Create `src/FeatureX/AzureDevOps<Thing>.cs` and `src/FeatureX/AzureDevOps<Thing>Handler.cs` to match the existing folder structure (e.g., `src/Project/`, `src/Repository/`).
 3) Implement idempotent **Create/Update** (GET to detect; POST/PUT/PATCH accordingly).
 4) Map only necessary fields first; keep request/response models tight and well-named.
 5) Update docs and the `Sample/` usage if relevant.

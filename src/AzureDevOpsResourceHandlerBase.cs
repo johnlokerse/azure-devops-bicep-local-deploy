@@ -1,14 +1,12 @@
-using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Net.Http.Json;
-using Bicep.Local.Extension.Host.Handlers;
-using DevOpsExtension.Models;
-using Azure.Identity;
 using Azure.Core;
+using Azure.Identity;
+using Bicep.Local.Extension.Host.Handlers;
 
-namespace DevOpsExtension.Handlers;
+namespace DevOpsExtension;
 
 public abstract class AzureDevOpsResourceHandlerBase<TProps, TIdentifiers>
     : TypedResourceHandler<TProps, TIdentifiers, Configuration>

@@ -1,12 +1,8 @@
-using System.Net;
-using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Net.Http.Json;
-using Bicep.Local.Extension.Host.Handlers;
-using DevOpsExtension.Models;
 
-namespace DevOpsExtension.Handlers;
+namespace DevOpsExtension.ServiceConnection;
 
 public class AzureDevOpsServiceConnectionHandler : AzureDevOpsResourceHandlerBase<AzureDevOpsServiceConnection, AzureDevOpsServiceConnectionIdentifiers>
 {

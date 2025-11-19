@@ -8,6 +8,7 @@ using DevOpsExtension.Permission;
 using DevOpsExtension.Project;
 using DevOpsExtension.Repository;
 using DevOpsExtension.ServiceConnection;
+using DevOpsExtension.WorkItems;
 
 var builder = WebApplication.CreateBuilder();
 
@@ -20,6 +21,7 @@ builder.Services
         typeAssembly: typeof(Program).Assembly,
         configurationType: typeof(Configuration))
     .WithResourceHandler<AzureDevOpsProjectHandler>()
+    .WithResourceHandler<AzureDevOpsWorkItemHandler>()
     .WithResourceHandler<AzureDevOpsRepositoryHandler>()
     .WithResourceHandler<AzureDevOpsArtifactFeedHandler>()
     .WithResourceHandler<AzureDevOpsServiceConnectionHandler>()

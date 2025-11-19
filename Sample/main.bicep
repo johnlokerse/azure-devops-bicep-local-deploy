@@ -52,6 +52,9 @@ param tenantId string
 @description('List of Azure DevOps extensions to install')
 param extensions extensionType[]
 
+@description('List of work items to create')
+param workItems workItemType[]
+
 resource project 'AzureDevOpsProject' = {
   name: projectName
   organization: organization
@@ -79,6 +82,15 @@ resource artifactFeed 'AzureDevOpsArtifactFeed' = {
   organization: organization
   project: project.name
 }
+
+resource workItemList 'AzureDevOpsWorkItem' = [for workItem in workItems: {
+  project: project.name
+  organization: organization  
+  id: workItem.id  
+  title: workItem.title
+  description: workItem.?description
+  type: workItem.type
+}]
 
 resource readerPermission 'AzureDevOpsPermission' = if (!empty(entraGroupObjectId) && !empty(azureDevOpsRole)) {
   groupObjectId: entraGroupObjectId!
@@ -120,4 +132,12 @@ type extensionType = {
   publisherName: string
   extensionName: string
   version: string
+}
+
+
+type workItemType = {
+  id: int
+  title: string
+  description: string?
+  type: string
 }

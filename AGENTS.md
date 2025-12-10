@@ -25,8 +25,7 @@ This is an **experimental** Azure Bicep local-deploy extension that configures A
 
 **Build and publish extension locally:**
 ```powershell
-# From the project root
-./Infra/Scripts/Publish-Extension.ps1 -Target ./azure-devops-extension
+./Infra/Scripts/Publish-Extension.ps1 -Target ./src/bin/azure-devops-extension
 ```
 
 **Configure Bicep to use the local extension:**
@@ -46,12 +45,12 @@ Edit `bicepconfig.json`:
 
 **Build the extension:**
 ```bash
-dotnet build src/AzureDevOpsBicepExtension.sln
+dotnet build src/azure-devops-bicep-local.sln
 ```
 
 **Publish for local testing:**
 ```powershell
-./Infra/Scripts/Publish-Extension.ps1 -Target '../bin/'
+./Infra/Scripts/Publish-Extension.ps1 -Target ./src/bin/azure-devops-extension
 ```
 *Note: Run this from the same directory as the `.csproj` file*
 

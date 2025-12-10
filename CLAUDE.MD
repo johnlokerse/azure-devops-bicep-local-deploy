@@ -43,12 +43,12 @@ For complex tasks (adding new resource handlers, refactoring, etc.):
 
 ### Building the Extension
 ```bash
-dotnet build src/AzureDevOpsBicepExtension.sln
+dotnet build src/azure-devops-bicep-local.sln
 ```
 
 ### Publishing for Local Testing
 ```powershell
-./Infra/Scripts/Publish-Extension.ps1 -Target ../bin/
+./Infra/Scripts/Publish-Extension.ps1 -Target ./src/bin/azure-devops-extension
 ```
 Run this from the same directory as the `.csproj` file.
 
@@ -253,12 +253,12 @@ After implementing changes:
 
 1. **Build:**
    ```bash
-   dotnet build src/AzureDevOpsBicepExtension.sln
+   dotnet build src/azure-devops-bicep-local.sln
    ```
 
 2. **Publish locally:**
    ```powershell
-   ./Infra/Scripts/Publish-Extension.ps1 -Target ../bin/
+   ./Infra/Scripts/Publish-Extension.ps1 -Target ./src/bin/azure-devops-extension
    ```
 
 3. **Test with sample:**

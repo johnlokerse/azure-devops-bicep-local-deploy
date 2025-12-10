@@ -9,6 +9,7 @@ using DevOpsExtension.Project;
 using DevOpsExtension.Repository;
 using DevOpsExtension.ServiceConnection;
 using DevOpsExtension.WorkItems;
+using DevOpsExtension.PipelineRun;
 
 var builder = WebApplication.CreateBuilder();
 
@@ -26,7 +27,8 @@ builder.Services
     .WithResourceHandler<AzureDevOpsArtifactFeedHandler>()
     .WithResourceHandler<AzureDevOpsServiceConnectionHandler>()
     .WithResourceHandler<AzureDevOpsPermissionHandler>()
-    .WithResourceHandler<AzureDevOpsExtensionHandler>();
+    .WithResourceHandler<AzureDevOpsExtensionHandler>()
+    .WithResourceHandler<AzureDevOpsPipelineRunHandler>();
 
 var app = builder.Build();
 

@@ -15,26 +15,26 @@ public class AzureDevOpsPipelineRunHandler : AzureDevOpsResourceHandlerBase<Azur
 
     protected override async Task<ResourceResponse> CreateOrUpdate(ResourceRequest request, CancellationToken cancellationToken)
     {
-        var props = request.Properties;
-        ValidateInputs(props);
+        var properties = request.Properties;
+        ValidateInputs(properties);
 
-        var (org, baseUrl) = GetOrgAndBaseUrl(props.Organization);
+        var (organization, baseUrl) = GetOrgAndBaseUrl(properties.Organization);
         using var client = CreateClient(request.Config);
 
         // Resolve pipeline ID if a name was provided
-        var pipelineId = await ResolvePipelineIdAsync(client, org, baseUrl, props.Project, props.PipelineId, cancellationToken);
+        var pipelineId = await ResolvePipelineIdAsync(client, organization, baseUrl, properties.Project, properties.PipelineId, cancellationToken);
 
         // Trigger the pipeline run
-        var runId = await TriggerPipelineAsync(client, org, baseUrl, props.Project, pipelineId, props, cancellationToken);
+        var runId = await TriggerPipelineAsync(client, organization, baseUrl, properties.Project, pipelineId, properties, cancellationToken);
 
         // Get the pipeline run details
-        var runDetails = await GetPipelineRunAsync(client, org, baseUrl, props.Project, pipelineId, runId, cancellationToken);
+        var runDetails = await GetPipelineRunAsync(client, organization, baseUrl, properties.Project, pipelineId, runId, cancellationToken);
 
         // Populate output properties
-        props.RunId = runDetails.id;
-        props.State = runDetails.state;
-        props.Result = runDetails.result;
-        props.Url = runDetails.url;
+        properties.RunId = runDetails.id;
+        properties.State = runDetails.state;
+        properties.Result = runDetails.result;
+        properties.Url = runDetails.url;
 
         return GetResponse(request);
     }
@@ -46,14 +46,14 @@ public class AzureDevOpsPipelineRunHandler : AzureDevOpsResourceHandlerBase<Azur
         PipelineId = properties.PipelineId
     };
 
-    private static void ValidateInputs(AzureDevOpsPipelineRun props)
+    private static void ValidateInputs(AzureDevOpsPipelineRun properties)
     {
-        if (string.IsNullOrWhiteSpace(props.Branch) && string.IsNullOrWhiteSpace(props.Tag))
+        if (string.IsNullOrWhiteSpace(properties.Branch) && string.IsNullOrWhiteSpace(properties.Tag))
         {
             throw new InvalidOperationException("Either 'branch' or 'tag' must be specified.");
         }
 
-        if (!string.IsNullOrWhiteSpace(props.Branch) && !string.IsNullOrWhiteSpace(props.Tag))
+        if (!string.IsNullOrWhiteSpace(properties.Branch) && !string.IsNullOrWhiteSpace(properties.Tag))
         {
             throw new InvalidOperationException("Cannot specify both 'branch' and 'tag'. Choose one.");
         }
@@ -61,11 +61,11 @@ public class AzureDevOpsPipelineRunHandler : AzureDevOpsResourceHandlerBase<Azur
 
     private static async Task<string> ResolvePipelineIdAsync(
         HttpClient client,
-        string org,
+        string organization,
         string baseUrl,
         string project,
         string pipelineIdOrName,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         // If it's already a numeric ID, return it
         if (int.TryParse(pipelineIdOrName, out _))
@@ -74,16 +74,16 @@ public class AzureDevOpsPipelineRunHandler : AzureDevOpsResourceHandlerBase<Azur
         }
 
         // Otherwise, lookup by name
-        var uri = $"{baseUrl}/{org}/{Uri.EscapeDataString(project)}/_apis/pipelines?api-version=7.1";
-        var resp = await client.GetAsync(uri, ct);
+        var uri = $"{baseUrl}/{organization}/{Uri.EscapeDataString(project)}/_apis/pipelines?api-version=7.1";
+        var response = await client.GetAsync(uri, cancellationToken);
 
-        if (!resp.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            var err = await resp.Content.ReadAsStringAsync(ct);
-            throw new InvalidOperationException($"Failed to list pipelines: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
+            var errorMessage = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Failed to list pipelines: {(int)response.StatusCode} {response.ReasonPhrase} {errorMessage}");
         }
 
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
         if (json.TryGetProperty("value", out var pipelines) && pipelines.ValueKind == JsonValueKind.Array)
         {
             foreach (var pipeline in pipelines.EnumerateArray())
@@ -104,48 +104,48 @@ public class AzureDevOpsPipelineRunHandler : AzureDevOpsResourceHandlerBase<Azur
 
     private static async Task<int> TriggerPipelineAsync(
         HttpClient client,
-        string org,
+        string organization,
         string baseUrl,
         string project,
         string pipelineId,
-        AzureDevOpsPipelineRun props,
-        CancellationToken ct)
+        AzureDevOpsPipelineRun properties,
+        CancellationToken cancellationToken)
     {
         string refName;
-        if (!string.IsNullOrWhiteSpace(props.Branch))
+        if (!string.IsNullOrWhiteSpace(properties.Branch))
         {
-            var branch = props.Branch.Replace("refs/heads/", "");
+            var branch = properties.Branch.Replace("refs/heads/", "");
             refName = $"refs/heads/{branch}";
         }
         else
         {
-            var tag = props.Tag!.Replace("refs/tags/", "");
+            var tag = properties.Tag!.Replace("refs/tags/", "");
             refName = $"refs/tags/{tag}";
         }
 
-        object? templateParams = null;
-        if (!string.IsNullOrWhiteSpace(props.TemplateParameters))
+        object? templateParameters = null;
+        if (!string.IsNullOrWhiteSpace(properties.TemplateParameters))
         {
             try
             {
-                templateParams = JsonSerializer.Deserialize<Dictionary<string, object>>(props.TemplateParameters);
+                templateParameters = JsonSerializer.Deserialize<Dictionary<string, object>>(properties.TemplateParameters);
             }
-            catch (JsonException ex)
+            catch (JsonException exception)
             {
-                throw new InvalidOperationException($"Invalid JSON in templateParameters: {ex.Message}", ex);
+                throw new InvalidOperationException($"Invalid JSON in templateParameters: {exception.Message}", exception);
             }
         }
 
         object? variables = null;
-        if (!string.IsNullOrWhiteSpace(props.Variables))
+        if (!string.IsNullOrWhiteSpace(properties.Variables))
         {
             try
             {
-                variables = JsonSerializer.Deserialize<Dictionary<string, object>>(props.Variables);
+                variables = JsonSerializer.Deserialize<Dictionary<string, object>>(properties.Variables);
             }
-            catch (JsonException ex)
+            catch (JsonException exception)
             {
-                throw new InvalidOperationException($"Invalid JSON in variables: {ex.Message}", ex);
+                throw new InvalidOperationException($"Invalid JSON in variables: {exception.Message}", exception);
             }
         }
 
@@ -161,24 +161,24 @@ public class AzureDevOpsPipelineRunHandler : AzureDevOpsResourceHandlerBase<Azur
                     }
                 }
             },
-            templateParameters = templateParams,
+            templateParameters = templateParameters,
             variables = variables
         };
 
         var content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
-        var uri = $"{baseUrl}/{org}/{Uri.EscapeDataString(project)}/_apis/pipelines/{pipelineId}/runs?api-version=7.1";
+        var uri = $"{baseUrl}/{organization}/{Uri.EscapeDataString(project)}/_apis/pipelines/{pipelineId}/runs?api-version=7.1";
 
-        var resp = await client.PostAsync(uri, content, ct);
-        if (!resp.IsSuccessStatusCode)
+        var response = await client.PostAsync(uri, content, cancellationToken);
+        if (!response.IsSuccessStatusCode)
         {
-            var err = await resp.Content.ReadAsStringAsync(ct);
-            throw new InvalidOperationException($"Failed to trigger pipeline: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
+            var errorMessage = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Failed to trigger pipeline: {(int)response.StatusCode} {response.ReasonPhrase} {errorMessage}");
         }
 
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-        if (json.TryGetProperty("id", out var idProp))
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        if (json.TryGetProperty("id", out var idProperty))
         {
-            return idProp.GetInt32();
+            return idProperty.GetInt32();
         }
 
         throw new InvalidOperationException("Pipeline run response did not contain an ID.");
@@ -186,23 +186,23 @@ public class AzureDevOpsPipelineRunHandler : AzureDevOpsResourceHandlerBase<Azur
 
     private static async Task<dynamic> GetPipelineRunAsync(
         HttpClient client,
-        string org,
+        string organization,
         string baseUrl,
         string project,
         string pipelineId,
         int runId,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
-        var uri = $"{baseUrl}/{org}/{Uri.EscapeDataString(project)}/_apis/pipelines/{pipelineId}/runs/{runId}?api-version=7.1";
-        var resp = await client.GetAsync(uri, ct);
+        var uri = $"{baseUrl}/{organization}/{Uri.EscapeDataString(project)}/_apis/pipelines/{pipelineId}/runs/{runId}?api-version=7.1";
+        var response = await client.GetAsync(uri, cancellationToken);
 
-        if (!resp.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            var err = await resp.Content.ReadAsStringAsync(ct);
-            throw new InvalidOperationException($"Failed to get pipeline run: {(int)resp.StatusCode} {resp.ReasonPhrase} {err}");
+            var errorMessage = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Failed to get pipeline run: {(int)response.StatusCode} {response.ReasonPhrase} {errorMessage}");
         }
 
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
         return new
         {
             id = json.TryGetProperty("id", out var id) ? id.GetInt32() : 0,

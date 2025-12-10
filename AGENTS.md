@@ -70,7 +70,14 @@ bicep-local-docgen generate --force
 - Follow **Microsoft C# coding conventions**
 - Use **production-quality** code standards
 - Prefer `async/await` for I/O operations
-- Use meaningful variable names (no single-letter variables except loop counters)
+- Use meaningful, descriptive variable names - **avoid abbreviations**:
+  - Use `cancellationToken` instead of `ct`
+  - Use `properties` instead of `props`
+  - Use `organization` instead of `org`
+  - Use `response` instead of `resp`
+  - Use `errorMessage` instead of `err`
+  - Use `exception` instead of `ex`
+  - No single-letter variables except loop counters (i, j, k)
 - Keep methods focused and single-purpose
 - Use dependency injection where appropriate
 

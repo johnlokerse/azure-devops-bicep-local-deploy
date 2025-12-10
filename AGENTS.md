@@ -4,7 +4,7 @@ This file provides context and instructions for AI coding agents working on the 
 
 ## Project Overview
 
-This is an **experimental** Azure Bicep local-deploy extension that configures Azure DevOps via its REST API. The extension allows users to define Azure DevOps resources (projects, repositories, artifact feeds, service connections, permissions, extensions, and work items) in Bicep templates and deploy them locally.
+This is an **experimental** Azure Bicep local-deploy extension that configures Azure DevOps via its REST API. The extension allows users to define Azure DevOps resources (projects, repositories, artifact feeds, service connections, permissions, extensions, work items, and pipeline runs) in Bicep templates and deploy them locally.
 
 **Primary languages:**
 - **C# (.NET 9)** for the extension implementation
@@ -138,6 +138,13 @@ Each handler must implement these methods:
 - Uses `extmgmt.dev.azure.com` endpoints
 - Idempotent: if version matches, no action taken
 
+**Pipeline Run Handler:**
+- Triggers Azure DevOps pipelines via POST request
+- Supports triggering by branch or tag
+- Accepts pipeline ID (number) or name (string)
+- Passes variables and template parameters as objects
+- Retrieves run details immediately after triggering
+
 ### 5. Documentation
 After creating a new handler:
 1. Add `BicepDocHeading`, `BicepDocExample`, and `BicepDocCustom` attributes to the resource class
@@ -243,7 +250,8 @@ azure-devops-bicep-local/
 │   ├── ServiceConnection/   # Service connection handler
 │   ├── Permission/          # Permission handler
 │   ├── Extension/           # Extension handler
-│   └── WorkItem/            # Work item handler
+│   ├── WorkItem/            # Work item handler
+│   └── PipelineRun/         # Pipeline run handler
 ├── Sample/                  # Example Bicep templates
 │   ├── main.bicep
 │   └── main.bicepparam
@@ -264,7 +272,7 @@ azure-devops-bicep-local/
 ## Notes for AI Agents
 
 - **Context gathering:** Always read existing handler implementations before proposing changes
-- **Consistency:** Follow patterns from existing handlers (especially `AzureDevOpsProjectHandler` and `AzureDevOpsArtifactFeedHandler`)
+- **Consistency:** Follow patterns from existing handlers (especially `AzureDevOpsProjectHandler`, `AzureDevOpsArtifactFeedHandler`, and `AzureDevOpsPipelineRunHandler`)
 - **API documentation:** Fetch latest Azure DevOps REST API docs before implementing new endpoints
 - **Minimal edits:** Only modify files when explicitly required
 - **Testing:** Always suggest testing steps after code changes

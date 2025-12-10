@@ -4,7 +4,7 @@ This file provides context and instructions specifically for Claude Code when wo
 
 ## Project Overview
 
-This is an **experimental** Azure Bicep local-deploy extension that configures Azure DevOps via its REST API. The extension allows users to define Azure DevOps resources (projects, repositories, artifact feeds, service connections, permissions, extensions, and work items) in Bicep templates and deploy them locally.
+This is an **experimental** Azure Bicep local-deploy extension that configures Azure DevOps via its REST API. The extension allows users to define Azure DevOps resources (projects, repositories, artifact feeds, service connections, permissions, extensions, work items, and pipeline runs) in Bicep templates and deploy them locally.
 
 **Primary languages:**
 - **C# (.NET 9)** for the extension implementation
@@ -121,6 +121,7 @@ Each handler must implement these methods:
 - `src/Project/AzureDevOpsProjectHandler.cs` - Polling, state management
 - `src/ArtifactFeed/AzureDevOpsArtifactFeedHandler.cs` - Get() implementation for @onlyIfNotExists()
 - `src/Permission/AzureDevOpsPermissionHandler.cs` - Pagination with continuation tokens
+- `src/PipelineRun/AzureDevOpsPipelineRunHandler.cs` - Pipeline triggering, multiple API calls in sequence
 
 ### 5. Documentation
 After creating a new handler:
@@ -206,7 +207,8 @@ azure-devops-bicep-local/
 │   ├── ServiceConnection/   # Service connection handler
 │   ├── Permission/          # Permission handler
 │   ├── Extension/           # Extension handler
-│   └── WorkItem/            # Work item handler
+│   ├── WorkItem/            # Work item handler
+│   └── PipelineRun/         # Pipeline run handler
 ├── Sample/                  # Example Bicep templates
 │   ├── main.bicep
 │   └── main.bicepparam

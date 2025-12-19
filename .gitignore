@@ -1,5 +1,10 @@
 src/bin/*
 src/obj/*
 
+tests/bin/*
+tests/obj/*
+tests/TestResults/*
+
 bin/*
 obj/*
+

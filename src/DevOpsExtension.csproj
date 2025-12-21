@@ -14,7 +14,7 @@
     <ItemGroup>
         <PackageReference Include="Azure.Bicep.Local.Extension" Version="0.38.33" />
         <PackageReference Include="Azure.Identity" Version="1.14.2" />
-        <PackageReference Include="Bicep.LocalDeploy" Version="0.1.3" />
+        <PackageReference Include="Bicep.LocalDeploy" Version="1.0.1" />
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
         <PackageReference Include="Nerdbank.GitVersioning" Version="3.8.118" PrivateAssets="All" />
     </ItemGroup>

@@ -231,4 +231,3 @@ message.Should().Contain("not found");
 3. **Use Strict Mocking** — Fail on unexpected calls to catch bugs early
 4. **Test One Scenario Per Method** — Keep tests focused and readable
 5. **Verify All Mocks** — Ensure all expected calls were made
-```

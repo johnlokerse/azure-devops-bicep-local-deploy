@@ -42,7 +42,8 @@ To add a new resource:
 1. Create a new directory `FeatureX` directory
 2. Implement the handler and model
 3. Test your changes locally by running `bicep local-deploy` or use `grpcurl`
-4. Open a PR for review
+4. Run `dotnet tool restore`and `bicep-local-docgen generate .\src --force` to update documentation
+5. Open a PR for review
 
 > [!NOTE]
 > The directory structure follows the REST API reference on the official [Azure DevOps

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "bicep-local-docgen": {
+      "version": "1.0.1",
+      "commands": [
+        "bicep-local-docgen"
+      ],
+      "rollForward": false
+    }
+  }
+}

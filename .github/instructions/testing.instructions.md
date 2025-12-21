@@ -1,4 +1,3 @@
-```instructions
 ---
 applyTo: "**/*Tests.cs,**/*Test.cs,**/*.Tests/**/*.cs"
 description: "Unit testing guidelines for Bicep local-deploy extension handlers"

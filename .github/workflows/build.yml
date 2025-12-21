@@ -1,11 +1,6 @@
-name: Build
+name: Build and Test Extension
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'Sample/**'
-      - README.md
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -55,3 +50,24 @@ jobs:
         run: |
           $env:BICEP_TRACING_ENABLED = "true"
           ./Infra/Scripts/Publish-Extension.ps1 -Target azure-devops-extension
+
+  run-extension-tests:
+    name: Run Extension Tests
+    runs-on: ubuntu-latest
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
+
+      - uses: actions/setup-dotnet@v4
+        with:
+            dotnet-version: '9.0.x'
+
+      - name: Run Tests
+        run: |
+          dotnet test

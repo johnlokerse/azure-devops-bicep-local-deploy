@@ -1,4 +1,4 @@
-name: Build
+name: Build and Test Extension
 
 on:
   pull_request:

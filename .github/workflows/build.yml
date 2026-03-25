@@ -5,13 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-dotnet:
     name: Build Extension
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
 
     env:
       DOTNET_NOLOGO: true
@@ -34,9 +34,6 @@ jobs:
     name: Publish Locally
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-
     steps:
       - uses: actions/checkout@v6
         with:
@@ -58,9 +55,6 @@ jobs:
           ./Infra/Scripts/Publish-Extension.ps1 -Target azure-devops-extension
 
   run-extension-tests:
-    permissions:
-      contents: read
-
     name: Run Extension Tests
     runs-on: ubuntu-latest
 

@@ -72,7 +72,7 @@ jobs:
 
       - name: Run nbgv
         id: nbgv
-        uses: dotnet/nbgv@v0.5.1
+        uses: dotnet/nbgv@v0.5.2
 
       - name: Publish Extension
         shell: pwsh

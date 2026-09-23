@@ -263,7 +263,7 @@ azure-devops-bicep-local/
 │   ├── main.bicep
 │   └── main.bicepparam
 ├── docs/                    # Generated documentation
-├── Infra/                   # Infrastructure as code
+├── Infra/                   # Build and publish tooling
 │   └── Scripts/            # Build and publish scripts
 └── AGENTS.md               # This file
 ```

@@ -64,7 +64,8 @@ In the `bicepconfig.json` you refer to the registry:
 ```json
 {
   "experimentalFeaturesEnabled": {
-    "localDeploy": true
+    "localDeploy": true,
+    "ociEnabled": true
   },
   "extensions": {
     "azuredevops": "br:ghcr.io/johnlokerse/azure-devops-bicep-local-deploy:<version>" // GitHub Container Registry

@@ -84,6 +84,8 @@ If you want to publish to your own registry, fork the project and run the GitHub
 ./Infra/Scripts/Publish-Extension.ps1 -Target $target
 ```
 
+Run this from a folder whose `bicepconfig.json` enables the `ociEnabled` experimental feature (for example [Infra](./Infra/)). Without it, Bicep treats every registry as an Azure Container Registry and tries to authenticate with Azure credentials.
+
 > [!NOTE]
 > Packages published to ghcr.io are private by default. Change the package visibility to public in the package settings to allow anonymous pulls.
 

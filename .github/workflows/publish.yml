@@ -63,6 +63,9 @@ jobs:
           # OCI repository names must be lowercase.
           [string] $repository = "${{ github.repository }}".ToLowerInvariant()
           [string] $target = "br:ghcr.io/${repository}:${{ steps.nbgv.outputs.SimpleVersion }}"
-          ./Infra/Scripts/Publish-Extension.ps1 -Target $target
+          ./Scripts/Publish-Extension.ps1 -Target $target
 
           "Published extension ``$target``." >> $env:GITHUB_STEP_SUMMARY
+        # Bicep reads bicepconfig.json from the working directory; Infra/bicepconfig.json enables
+        # 'ociEnabled' so non-ACR registries (ghcr.io) authenticate via Docker credentials.
+        working-directory: ./Infra

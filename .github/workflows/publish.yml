@@ -9,44 +9,24 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
 jobs:
-  deploy-acr:
-    name: Deploy ACR
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: true
-
-      - name: Log in to Azure
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deployment Infra
-        uses: azure/bicep-deploy@v2
-        with:
-          type: deployment
-          operation: create
-          scope: subscription
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          name: Development
-          location: westeurope
-          template-file: ./Infra/main.bicep
-          parameters-file: ./Infra/main.bicepparam
-
   publish-extension:
-    needs: deploy-acr
     name: Publish Azure DevOps Bicep extension
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
 
     steps:
       - uses: actions/checkout@v6
@@ -56,14 +36,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v5
         with:
-            dotnet-version: '9.0.x'
-
-      - name: Log in to Azure
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          dotnet-version: '10.0.x'
 
       - name: Install Bicep
         run: |
@@ -74,10 +47,22 @@ jobs:
         id: nbgv
         uses: dotnet/nbgv@v0.5.1
 
+      - name: Test
+        run: dotnet test
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
+
       - name: Publish Extension
         shell: pwsh
         run: |
-          [string] $target = "br:azuredevopsbicep.azurecr.io/extensions/azuredevops:${{ steps.nbgv.outputs.SimpleVersion }}"
+          # OCI repository names must be lowercase.
+          [string] $repository = "${{ github.repository }}".ToLowerInvariant()
+          [string] $target = "br:ghcr.io/${repository}:${{ steps.nbgv.outputs.SimpleVersion }}"
           ./Infra/Scripts/Publish-Extension.ps1 -Target $target
 
-          Write-Host "Published extension \`${$target}\`." >> $GITHUB_STEP_SUMMARY
+          "Published extension ``$target``." >> $env:GITHUB_STEP_SUMMARY

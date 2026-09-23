@@ -27,9 +27,9 @@ See the [Sample](./Sample/main.bicep) folder for an example Bicep template.
 - .NET 9 SDK
 - Bicep CLI v0.37.4+ (for `local-deploy`)
 
-## How to use it locally or via an Azure Container Registry (ACR)
+## How to use it locally or via the GitHub Container Registry
 
-Here are the steps to run it either locally or using an ACR.
+Here are the steps to run it either locally or using the GitHub Container Registry.
 
 ### Local build
 
@@ -55,17 +55,11 @@ This creates the binary that contains the Azure DevOps API calls. Prepare your `
 
 Run `bicep local-deploy main.bicepparam` to test the extension locally. Also, see the example in the [Sample](./Sample/) folder.
 
-### Azure Container Registry build
+### GitHub Container Registry
 
-If you want to make use of an Azure Container Registry then I would recommend to fork the project, and run the GitHub Actions. Or, run the [Bicep template](./Infra/main.bicep) for the ACR deployment locally and then push it using the same principal
+Every push to `main` publishes the extension to the GitHub Container Registry (ghcr.io) via the [Publish Extension](./.github/workflows/publish.yml) workflow. The version is determined by [Nerdbank.GitVersioning](./version.json).
 
-```powershell
-[string] $target = "br:<registry-name>.azurecr.io/extensions/azuredevops:<version>"
-
-./Infra/Scripts/Publish-Extension.ps1 -Target $target
-```
-
-In the `bicepconfig.json` you refer to the ACR:
+In the `bicepconfig.json` you refer to the registry:
 
 ```json
 {
@@ -73,15 +67,24 @@ In the `bicepconfig.json` you refer to the ACR:
     "localDeploy": true
   },
   "extensions": {
-    "azuredevops": "br:<registry-name>.azurecr.io/extensions/azuredevops:<version>" // ACR
+    "azuredevops": "br:ghcr.io/johnlokerse/azure-devops-bicep-local-deploy:<version>" // GitHub Container Registry
   },
   "implicitExtensions": []
 }
 ```
 
-## Public ACR
+Available versions are listed under the repository's [packages](https://github.com/johnlokerse/azure-devops-bicep-local-deploy/pkgs/container/azure-devops-bicep-local-deploy).
 
-If you want to try it out without effort, then you can use `br:azuredevopsbicep.azurecr.io/extensions/azuredevops:0.1.39` as the ACR reference.
+If you want to publish to your own registry, fork the project and run the GitHub Actions, or log in to ghcr.io (for example with `docker login ghcr.io`) and push it yourself:
+
+```powershell
+[string] $target = "br:ghcr.io/<owner>/<repository>:<version>"
+
+./Infra/Scripts/Publish-Extension.ps1 -Target $target
+```
+
+> [!NOTE]
+> Packages published to ghcr.io are private by default. Change the package visibility to public in the package settings to allow anonymous pulls.
 
 ## Bicep Usage Example
 
